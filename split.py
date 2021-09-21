@@ -99,6 +99,7 @@ class Split:
         # Handle arc not found
         raise FileNotFoundError(f"No arc found in the data directory {self.data_dir}")
 
+
     def split_file(self, file: str) -> None: # TODO@JustinotherGitter: replace typing return from None to correct type
         # Create empty HDUList
         O_beam = pyfits.HDUList()
@@ -176,108 +177,8 @@ class Split:
         return
 
 
-def main(): # TODO@JustinotherGitter: Handle Split.py called directly
+def main(argv): # TODO@JustinotherGitter: Handle Split.py called directly
     return
 
 if __name__ == "__main__":
-    main()
-
-########################
-# TODO@JustinotherGitter: Finish refactoring/rewriting and remove below
-# not to be included in any distributions
-def split(pathname, splitrow=517, display=False, no_arc=False, save_pref=["obeam", "ebeam"]):
-    if display: print(f"Path to data given as: {pathname}")
-    
-    # Get ARC and DATA FITS files from path given
-    arcfile = ""
-    infilelist = []
-    o_files = []
-    e_files = []
-    
-    # Get all valid FITS files
-    for fl in os.listdir(pathname):
-        if os.path.isfile(os.path.join(pathname, fl)) and ("m" == fl[0]) and ("fits" == fl.split(".")[-1]):
-            #print(fl)
-            infilelist.append(fl)
-    
-    # TODO: Allow specification of ARC file in case multiple ARCS
-    # Get arcfile from valid FITS files
-    for fl in infilelist:
-        with pyfits.open(fl) as hdu:
-            if hdu['PRIMARY'].header['OBJECT'] == 'ARC':
-                arcfile = fl
-    
-    if (arcfile == "") & (no_arc == False):
-        cont = input("No arc found. Continue without it? [Y/n]\t")
-        if cont.lower() in ("y", "yes", ""):
-            no_arc = True
-        elif cont.lower() in ("n", "no"):
-            print("Quitting wav_replacement.py")
-            sys.exit()
-            
-    if no_arc:
-        arcfile = ""
-    else:
-        if display: print("Arcfile:\t\t\t" + arcfile)
-        
-        arcO, arcE = outfiles(arcfile, splitrow, save_O="oarc" + arcfile[-9:], save_E="earc" + arcfile[-9:], display=display)
-        
-        o_files.append("oarc" + arcfile[-9:])
-        e_files.append("earc" + arcfile[-9:])
-        if display: print(f"{arcfile} split into {o_files[-1]} & {e_files[-1]}")
-        
-    # Load existing FITS file and create copied single-extention FITS file
-    if display: print("Pipeline m*.fits files found:\t" + str(infilelist))
-    
-    tar_list = []
-    for i in infilelist:
-        # Create blank FITS file for wavelength calibration and transformation
-        if i != arcfile:
-            tar_list.append(outfiles(i, splitrow, save_O=save_pref[0] + i[-9:], save_E=save_pref[1] + i[-9:], display=display))
-            
-            o_files.append(save_pref[0] + i[-9:])
-            e_files.append(save_pref[1] + i[-9:])
-        
-        if display: print(f"{i} split into {o_files[-1]} & {e_files[-1]}")
-    
-    
-    ####################################
-            
-    ## Crop fits files for reidentify to work
-    # TODO: Find crop size dynamically / user given
-    cut_size = 40
-    
-    
-    # Obeam
-    for i in o_files:
-        with pyfits.open(i) as hdu:
-            #print(hdu.info())
-            #fig, [ax1, ax2] = plt.subplots(nrows=2, figsize=[18, 8])
-            #ax1.imshow(hdu[0].data, vmax=np.std(hdu[0].data), origin="lower")
-            #ax2.imshow(hdu[0].data[0:-cut_size], vmax=np.std(hdu[0].data), origin="lower")
-    
-            hdu[0].data = hdu[0].data[0:-cut_size]
-            hdu.writeto(i, overwrite=True)
-    
-    #Ebeam
-    for i in e_files:
-        with pyfits.open(i) as hdu:
-            #print(hdu.info())
-            #fig, [ax1, ax2] = plt.subplots(nrows=2, figsize=[18, 8])
-            #ax1.imshow(hdu[0].data, vmax=np.std(hdu[0].data), origin="lower")
-            #ax2.imshow(hdu[0].data[0:-cut_size], vmax=np.std(hdu[0].data), origin="lower")
-    
-            hdu[0].data = hdu[0].data[cut_size:]
-            hdu.writeto(i, overwrite=True)
-
-    # Create text files listing o and e beams
-    with open("o_frames", "w+") as f_o:
-        for i in o_files:
-            f_o.write(i + "\n")
-            
-    with open("e_frames", "w+") as f_e:
-        for i in e_files:
-            f_e.write(i + "\n")
-    
-    if display: print("Wrote o and e frames to o_frames and e_frames, respectfully.")
-    print("Finished with no errors raised.")
+    main(sys.argv[1:])
