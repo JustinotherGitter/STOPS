@@ -95,11 +95,11 @@ def main(argv):
         
     if mode == "split":
         print("Running split")
-        split.main(pathname, split_row, verbose, no_arc, prefix)
+        split.Split(data_dir=pathname, split_row=split_row, verbose=verbose, no_arc=no_arc, save_prefix=prefix).process()
         
     elif mode == "join":
         print("Running join")
-        join.main(pathname, split_row, verbose, no_arc, prefix)
+        join.Join(data_dir=pathname, split_row=split_row, verbose=verbose, no_arc=no_arc, save_prefix=prefix).process()
 
 if __name__ == "__main__":
     main(sys.argv[1:])

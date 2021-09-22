@@ -115,7 +115,6 @@ class Split:
 
             # O_beam[0].data = raw_split['SCI'].data[1]
             # E_beam[0].data = raw_split['SCI'].data[0]
-
             O_beam[0].data, E_beam[0].data = self.crop_file(raw_split)
 
             # Handle prefix and names
@@ -174,6 +173,27 @@ class Split:
         else:
             self.o_files.append(o_name)
             self.e_files.append(e_name)
+            
+        return
+    
+
+    def save_beam_lists(self):
+        with open("o_frames", "w+") as f_o:
+            for i in self.o_files:
+                f_o.write(i + "\n")
+                
+        with open("e_frames", "w+") as f_e:
+            for i in self.e_files:
+                f_e.write(i + "\n")
+
+        return
+
+
+    def process(self):
+        for target in self.fits_list:
+            self.split_file(target)
+        
+        self.save_beam_lists()
         return
 
 
