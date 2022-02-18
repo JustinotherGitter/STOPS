@@ -1,4 +1,4 @@
-# Code replaced from main py file. Kept for comparison while rewriting but to be deleted as stil in main branch
+# Code replaced from main py file. Kept for comparison while rewriting but to be deleted as still in main branch
 
 #region Split PIPELINE files for IRAF 
 def split(pathname, splitrow=517, display=False, no_arc=False, save_pref=["obeam", "ebeam"]):

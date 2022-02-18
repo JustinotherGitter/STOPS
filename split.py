@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __author__ = "Justin Cooper"
-__version__ = "20.09.2021"
+__version__ = "18.02.2022"
 __email__ = "justin.jb78@gmail.com"
 
 import os
@@ -20,16 +20,16 @@ class Split:
         Parameters
         ----------
         data_dir : str
-            The path to the data (wmxgbp*.fits files) to be joined
+            The path to the data (mxgbp*.fits files) to be split
         fits_list : list of type FITS, optional
             A list of pre-reduced polsalt FITS files to be split.
             (The default is None, meaning Split will search for files to split in the data directory)
         split_row : int, optional
-            The row that the data was split along.
+            The row that the data will be split along.
             (The default is 517, the middle row of the CCD's)
         verbose : bool, optional
             Decides whether the output should be recorded to the terminal window.
-            (The default is False, no output written to the terminal window)
+            (The default is False, only the most neccesary output written to the terminal window)
         no_arc : bool, optional
             Decides whether the arc frames should be recombined.
             (The default is False, since polsalt only uses the arc frames until spectral extraction)
@@ -45,7 +45,7 @@ class Split:
 
         Raises
         ------
-        # TODO@JustinotherGitter : Complete docs for which errors are raised and when
+            # TODO@JustinotherGitter : Complete docs for which errors are raised and when
     """
     def __init__(self,
                 data_dir : str,
@@ -55,9 +55,9 @@ class Split:
                 no_arc : bool = False,
                 save_prefix : dict[str, List[str]] = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
                 ) -> None:
-        self.data_dir = data_dir # TODO@JustinotherGitter: Check valid path
+        self.data_dir = data_dir
         self.fits_list = self.get_files(fits_list)
-        self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows / 2 instead of 517
+        self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows // 2 instead of 517
         self.verbose = verbose
         self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
@@ -120,7 +120,7 @@ class Split:
             # Handle prefix and names
             pref = 'arc' if file == self.arc else 'beam'
             o_name = self.save_prefix[pref][0] + file[-9:]
-            e_name = self.save_prefix[pref][0] + file[-9:]
+            e_name = self.save_prefix[pref][1] + file[-9:]
             
             # Add split data to O & E beam lists
             self.update_beam_lists(o_name, e_name, pref == 'arc')
@@ -159,7 +159,7 @@ class Split:
         return hdu
 
 
-    def crop_file(hdulist, crop: int=40) -> None: # TODO@JustinotherGitter: Fix return type and Handle default crop better
+    def crop_file(hdulist, crop: int=40) -> None: # TODO@JustinotherGitter: Return type and handle default crop better
         o_data = hdulist['SCI'].data[1, 0:-crop]
         e_data = hdulist['SCI'].data[0, crop:]
         
