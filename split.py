@@ -7,7 +7,7 @@ __email__ = "justin.jb78@gmail.com"
 
 import os
 import sys
-from typing import List
+from typing import List, Dict
 from copy import deepcopy
 import numpy as np
 from astropy.io import fits as pyfits
@@ -53,13 +53,15 @@ class Split:
                 split_row : int = 517,
                 verbose : bool = False,
                 no_arc : bool = False,
-                save_prefix : dict[str, List[str]] = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
+                save_prefix = None
                 ) -> None:
         self.data_dir = data_dir
         self.fits_list = self.get_files(fits_list)
         self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows // 2 instead of 517
         self.verbose = verbose
-        self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
+        self.save_prefix = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
+        if type(save_prefix) == dict:
+            self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
         self.arc = self.get_arc(no_arc)
         self.o_files = []
@@ -159,7 +161,7 @@ class Split:
         return hdu
 
 
-    def crop_file(hdulist, crop: int=40) -> None: # TODO@JustinotherGitter: Return type and handle default crop better
+    def crop_file(self, hdulist, crop: int=40) -> None: # TODO@JustinotherGitter: Return type and handle default crop better
         o_data = hdulist['SCI'].data[1, 0:-crop]
         e_data = hdulist['SCI'].data[0, crop:]
         
@@ -177,7 +179,7 @@ class Split:
         return
     
 
-    def save_beam_lists(self):
+    def save_beam_lists(self) -> None:
         with open("o_frames", "w+") as f_o:
             for i in self.o_files:
                 f_o.write(i + "\n")
@@ -189,7 +191,7 @@ class Split:
         return
 
 
-    def process(self):
+    def process(self) -> None:
         for target in self.fits_list:
             self.split_file(target)
         
@@ -197,7 +199,7 @@ class Split:
         return
 
 
-def main(argv): # TODO@JustinotherGitter: Handle Split.py called directly
+def main(argv) -> None: # TODO@JustinotherGitter: Handle Split.py called directly
     return
 
 if __name__ == "__main__":
