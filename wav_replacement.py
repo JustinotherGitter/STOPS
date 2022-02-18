@@ -3,7 +3,7 @@
 """
 Created on Mon Mar 15 13:53:44 2021
 
-@author: justin
+@author: Justin Cooper
 """
 # General Imports
 import sys
@@ -19,8 +19,8 @@ import lacosmic
 import split
 import join
 # Polsalt Imports, PYTHON 2 edited to PYTHON 3
-from polsalt.specpolpy3 import read_wollaston
-from polsalt.specpolpy3 import outfiles, split_sci
+from specpolpy3 import read_wollaston
+from specpolpy3 import outfiles, split_sci
 
 
 def main(argv):
