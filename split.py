@@ -7,7 +7,7 @@ __email__ = "justin.jb78@gmail.com"
 
 import os
 import sys
-from typing import List, Dict
+from typing import List
 from copy import deepcopy
 import numpy as np
 from astropy.io import fits as pyfits
