@@ -1,23 +1,85 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Mar 17 17:36:18 2021
 
-@author: justin
-"""
+__version__ = "03.03.2022"
 
-debug = True
-
-# Imports
 import sys
 import os
 import getopt
+from typing import List
 
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from numpy.polynomial import chebyshev
 from scipy import signal
+
+class CrossCorrelate:
+    """
+        Cross correlate allows for comparing the extensions of multiple
+        FITS files, or comparing the O and E beams of a single FITS file.
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+
+
+        Raises
+        ------
+
+        
+    """
+    def __init__(self,
+                dir_a : str,
+                dir_b : str = None,
+                continuum : bool = False,
+                ccd_split : bool = True,
+                dir_save : str = None) -> None:
+        self.dir_a = dir_a
+        self.dir_b = dir_b
+        self.continuum = continuum
+        self.ccd_split = ccd_split
+        self.dir_save = dir_save
+
+        self.fits_list_a = self.get_files(self.dir_a)
+        
+        return
+
+    def get_files(self, dir : str, prefix : str = "e", extension : str = "fits") -> List:
+        infilelist = []
+        for fl in os.listdir(dir):
+            if os.path.isfile(os.path.join(dir, fl)) and (prefix == fl[0]) and (extension == fl.split(".")[-1]):
+                infilelist.append(fl)
+        pass
+
+    def continuum(self) -> np.array:
+        pass
+
+    def cross_correlate(spec1, spec2) -> np.array:
+        corr = signal.correlate(spec1, spec2)
+        corr /= np.max(corr) # Scales array so that the maximum correlation is at 1.0
+        lags = signal.correlation_lags(len(spec1), len(spec2))
+        return corr, lags
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###############################################################
+
+debug = True
 
 # Functions
 def continuum(w,c,deg=11,std=1.6,steps=5,pos=False, plot=False):
@@ -129,7 +191,7 @@ def load_data(a_dir=os.path.expanduser("~/polsalt-beta/masters_pol/sci/"),
 
     return sci_list
 
-# Compare E extention to O extention for Iraf and then for Pure wavelength.
+# Compare E extension to O extension for Iraf and then for Pure wavelength.
 def cross_corr_oe(sci_list, sub_cont, split_ccds, save_plots, save_path, offset=0):
     if not split_ccds:
         for d in ["ewhdu", "comp"]:
@@ -242,7 +304,7 @@ def cross_corr_oe(sci_list, sub_cont, split_ccds, save_plots, save_path, offset=
                 file_name = "ccd_" + ("bg_sub_" if sub_cont else "") + ("iraf_" if d == "ewhdu" else "salt_")
                 fig.savefig(fname=f"cross_corr_results/{file_name}cross_correlation.pdf")
 
-# Compare E extentions for Iraf vs Pure wavelength and then O extentions.
+# Compare E extensions for Iraf vs Pure wavelength and then O extensions.
 def cross_corr_ab(sci_list, sub_cont, split_ccds, save_plots, save_path, offset=0):
     if not split_ccds:
         for f in range(4):

@@ -42,7 +42,7 @@ class Join:
             (The default is False, no output written to the terminal window)
         no_arc : bool, optional
             Decides whether the arc frames should be recombined.
-            (The default is False, since polsalt only uses the arc frames until spectral extraction)
+            (The default is True, since polsalt only uses the arc frames until spectral extraction)
         save_pref : list of str, optional
             The prefix that the O & E beams are saved as.
             (The default is ["obeam", "ebeam"], which is what split defaults to)
@@ -63,7 +63,7 @@ class Join:
                 solutions_list : List[str] = None,
                 split_row : int = 517,
                 verbose : bool = False,
-                no_arc : bool = False,
+                no_arc : bool = True,
                 save_prefix = None
                 ) -> None:
         self.data_dir = data_dir # TODO@JustinotherGitter: Check valid path
@@ -77,7 +77,7 @@ class Join:
             self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
         self.no_arc = no_arc
-        self.arc = self.get_arc(no_arc)
+        self.arc = self.get_arc()
         return
 
 
@@ -122,7 +122,7 @@ class Join:
         return ws
 
     
-    def get_arc(self, exclude_arc: bool) -> str:
+    def get_arc(self) -> str:
 
         # Handle finding of arc
         for fl in self.fits_list:
@@ -148,7 +148,7 @@ class Join:
         # Open file
         with pyfits.open(file) as hdu:
             # Check if file has been cropped
-            cropsize = self.check_crop(hdu, o_file)
+            cropsize = self.check_crop(hdu, o_file, e_file)
             
             y_shape = int(hdu["SCI"].data.shape[0] / 2) - cropsize
             x_shape = hdu["SCI"].data.shape[1]
@@ -265,12 +265,18 @@ class Join:
         
         whdu.writeto(f"w{file}", overwrite="True")
     
-    def check_crop(self, hdu, o_file) -> int:
+    def check_crop(self, hdu, o_file, e_file) -> int:
         cropsize = 0
+        o_y = 0
+        e_y = 0
         with pyfits.open(o_file) as o:
-            if hdu["SCI"].data.shape[0] / 2 != o[0].data.shape[0]:
-                # Get crop size
-                cropsize = int(hdu["SCI"].data.shape[0] / 2 - o[0].data.shape[0])
+            o_y = o[0].data.shape[0]
+        with pyfits.open(e_file) as e:
+            e_y = e[0].data.shape[0]
+
+        if hdu["SCI"].data.shape[0] != (o_y + e_y):
+            # Get crop size, assuming crop same on both sides
+            cropsize = int(0.5 * (hdu["SCI"].data.shape[0] - o_y - e_y))
         return cropsize
 
     def process(self) -> None:
