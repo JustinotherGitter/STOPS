@@ -12,8 +12,7 @@ import os
 import sys
 import getopt
 
-import split
-import join
+import split, join, cross_corr
 
 
 argv = sys.argv[1:]
@@ -62,6 +61,9 @@ for opt, arg in opts:
             
         elif arg.lower() in ("join", "j"):
             mode = "join"
+        
+        elif arg.lower() in ("cross_corr", "c"):
+            mode = "xcorr"
             
     elif opt in ("-d", "--dir"):
         if arg == ".":
@@ -102,3 +104,7 @@ if mode == "split":
 elif mode == "join":
     print("Running join")
     join.Join(data_dir=pathname, split_row=split_row, verbose=verbose, no_arc=no_arc, save_prefix=prefix).process()
+
+elif mode == "xcorr":
+    print("Running cross correlation")
+    cross_corr.CrossCorrelate().process() # TODO@JustinotherGitter: Add relevant args to Correlate object creation

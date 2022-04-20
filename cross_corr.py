@@ -45,6 +45,7 @@ class CrossCorrelate:
         self.dir_save = dir_save
 
         self.fits_list_a = self.get_files(self.dir_a)
+        self.fits_list_b = self.get_files(self.dir_b)
         
         return
 
@@ -64,7 +65,12 @@ class CrossCorrelate:
         lags = signal.correlation_lags(len(spec1), len(spec2))
         return corr, lags
 
-
+    def process(self) -> None:
+        for target_a in self.fits_list_a:
+            for target_b in self.fits_list_b:
+                self.cross_correlate(target_a, target_b)
+        
+        return
 
 
 
