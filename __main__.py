@@ -108,3 +108,4 @@ elif mode == "join":
 elif mode == "xcorr":
     print("Running cross correlation")
     cross_corr.CrossCorrelate().process() # TODO@JustinotherGitter: Add relevant args to Correlate object creation
+    
