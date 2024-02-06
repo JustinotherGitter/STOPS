@@ -1,8 +1,9 @@
 # Ignore byte-compiled files
 __pycache__/
 
-# Ignore Master sub-directory
+# Ignore Master sub-directory or zip
 Masters/
+Masters.zip
 
 # Ignore test data
 test_data/
