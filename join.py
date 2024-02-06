@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Justin Cooper"
 __version__ = "20.09.2021"
+__author__ = "Justin Cooper"
 __email__ = "justin.jb78@gmail.com"
 
 import os
@@ -11,8 +11,9 @@ from typing import List
 import re
 import numpy as np
 from numpy.polynomial.chebyshev import chebgrid2d as chebgrid2d
+from numpy.polynomial.legendre import leggrid2d as leggrid2d
 from astropy.io import fits as pyfits
-from specpolpy3 import read_wollaston, split_sci
+from utils.specpolpy3 import read_wollaston, split_sci
 import lacosmic
 
 DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
@@ -180,6 +181,11 @@ class Join:
                     whdu[ext].data = split_sci(hdu, self.split_row, ext=ext)[ext].data
 
         # End of hdu calls, close hdu
+                    
+        # Wavelength database parsing
+        # See https://iraf.net/irafdocs/formats/fitcoords.php,
+        # https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebgrid2d.html
+        # https://numpy.org/doc/stable/reference/generated/numpy.polynomial.legendre.leggrid2d.html
         
         whdu.append(pyfits.ImageHDU(name="WAV"))
         wav_header = whdu["SCI"].header.copy()
@@ -194,33 +200,39 @@ class Join:
             chebvals = []
             with open(self.database + "/" + fname) as fcfile: # TODO@JustinotherGitter: Check order of fc files here
                 for i in fcfile:
-                    # TODO: check regex substitution correct
+                    # TODO@JustinotherGitter: check regex substitution correct
                     chebvals.append(re.sub(r"[\n\t\s]*", "", i))
 
-            if chebvals[6] == "1.": #function - Function type (1=chebyshev, 2=legendre)
-                x_ord = int(chebvals[7][:-1]) #xorder - X "order" (highest power of x)
-                y_ord = int(chebvals[8][:-1]) #yorder - Y "order" (highest power of y)
-                if chebvals[9] == "1.": #xterms - Cross-term type (always 1 for FITCOORDS)
-                    xmin = int(float(chebvals[10][:-1])) #xmin - Minimum x over which the fit is defined
-                    xmax = int(float(chebvals[11][:-1])) #xmax - Maximum x over which the fit is defined
-                    ymin = int(float(chebvals[12][:-1])) #ymin - Minimum y over which the fit is defined
-                    ymax = int(float(chebvals[13][:-1])) #ymax - Maximum y over which the fit is defined
-                    
-                    if ymax != y_shape: # TODO: Fix temporary stretching
-                        ymax = y_shape
+            if chebvals[9] != "1.": #xterms - Cross-term type 
+                raise Exception("Cross-term not recognised (always 1 for FITCOORDS), redo FITCOORDS or change manually.")
+
+            x_ord = int(chebvals[7][:-1]) #xorder - X "order" (highest power of x)
+            y_ord = int(chebvals[8][:-1]) #yorder - Y "order" (highest power of y)
+
+            xmin = int(float(chebvals[10][:-1])) #xmin - Minimum x over which the fit is defined
+            xmax = int(float(chebvals[11][:-1])) #xmax - Maximum x over which the fit is defined
+            ymin = int(float(chebvals[12][:-1])) #ymin - Minimum y over which the fit is defined
+            ymax = int(float(chebvals[13][:-1])) #ymax - Maximum y over which the fit is defined
+
+            if ymax != y_shape: # TODO@JustinotherGitter: Fix temporary stretching
+                ymax = y_shape
+
+            c_vals = np.array(chebvals[14:], dtype=float)
+            c_vals = np.reshape(c_vals, (x_ord, y_ord))
+
+            if chebvals[6] == "1.": #function - Function type (1=chebyshev)
                         
-                c_vals = np.array(chebvals[14:], dtype=float)
-                c_vals = np.reshape(c_vals, (x_ord, y_ord))
-            
-            
                 # Set wavelength extention values to function
                 whdu["WAV"].data[num] = chebgrid2d(x=np.linspace(-1, 1, ymax),
-                                                    y=np.linspace(-1, 1, xmax),
-                                                    c=c_vals)
+                                                   y=np.linspace(-1, 1, xmax),
+                                                   c=c_vals)
 
-            elif chebvals[6] == "2.":
-                # TODO@JustinotherGitter: Handle legendre
-                raise NotImplementedError("Legendre functions not yet supported")
+            elif chebvals[6] == "2.": #function - Function type (2=legendre)
+
+                # Set wavelength extention values to function
+                whdu["WAV"].data[num] = leggrid2d(x=np.linspace(-1, 1, ymax),
+                                                  y=np.linspace(-1, 1, xmax),
+                                                  c=c_vals)
 
             else:
                 #TODO@JustinotherGitter: Handle other functions?

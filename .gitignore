@@ -1,0 +1,11 @@
+# Ignore byte-compiled files
+__pycache__/
+
+# Ignore Master sub-directory
+Masters/
+
+# Ignore test data
+test_data/
+
+# Ignore backup files
+*_backup*
