@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "2024.02.04"
+__version__ = "2024.02.23"
 __author__ = "Justin Cooper"
 __email__ = "justin.jb78@gmail.com"
 
 # General Imports
 import os
-import sys
 import argparse
 import logging
 
 import split
 import join
 import cross_correlate
+import skylines
 
 from utils import ParserUtils as pu
 
@@ -152,19 +152,57 @@ corr_parser.add_argument(
     "--offset",
     type=int,
     default=0,
-    help="Offset introduction when correcting for known offset in spectra or for testing purposes. (For testing, not used in regular operation.) ",
+    help="Offset introduction when correcting for known offset in spectra or for testing purposes. (For testing, not used during regular operation.)",
 )
 corr_parser.add_argument(
     "-s",
     "--save_name",
-    help="Name to save plot with. If left undefined,d plot will not be saved.",
+    help="Name to save plot with. If left undefined, plot will not be saved.",
 )
 corr_parser.set_defaults(mode="correlate", func=cross_correlate.CrossCorrelate)
 
 
-# Parse mode and arguments + and keyword clean up
+# Skyline subparser mode
+sky_parser = subparsers.add_parser(
+    "skylines", aliases=["sky"], help="Sky line check mode"
+)
+sky_parser.add_argument(
+    "filenames",
+    action="store",
+    nargs="+",
+    type=pu.parse_file,
+    help="File name(s) of FITS files to be checked using SALT sky atlas. At least one filename expected.",
+)
+sky_parser.add_argument(
+    "-s",
+    "--save_prefix",
+    action="store",
+    nargs="?",
+    # default=None,
+    const="sky",
+    help="Prefix used when saving plot. Excluding option does not save, flag usage of option uses 'sky' default prefix, and a provided prefix overwrites default prefix.",
+)
+sky_parser.add_argument(
+    "-b",
+    "--beams",
+    choices=["o", "e", "oe"],
+    type=str.lower,
+    default="both",
+    help="Beam(s) for skyline checking. Defaults to both beams overplotted, but may be given either 'o', 'e', or 'oe' for separating and excluding beam plots.",
+)
+sky_parser.add_argument(
+    "-t",
+    "--transform",
+    action="store_true",
+    help="Flag to NOT transform image. Defaults to true. Recommended to only use when input image(s) already transformed.",
+)
+sky_parser.set_defaults(mode="skyline", func=skylines.Skylines)
+
+
+# Parse mode and arguments + any keyword clean up
 args = parser.parse_args()
 args.verbose = pu.parse_loglevel(args.verbose)
+
 
 # Begin logging
 logfile = pu.parse_logfile(args.log)
@@ -173,10 +211,12 @@ logging.basicConfig(filename=logfile, level=args.verbose)
 # format=logFormatter
 # handlers=[logging.StreamHandler(sys.stdout)]
 
+
 # Run mode using arguments
 logging.debug(f"Argparse namespace: {args}")
 logging.info(f"Mode:{args.mode}")
 args.func(args).process()
 
-# Confirm all processes completed
+
+# Confirm all processes completed and exit without error
 logging.info("All done! Come again!\n")
