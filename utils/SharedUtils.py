@@ -1,7 +1,50 @@
+# Shared helper functions for convenience
+import os
+import logging
+import glob
+
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.polynomial import chebyshev
+from astropy.io import fits as pyfits
 from scipy import signal
+
+# TODO@JustinotherGitter: Add pathlike (filelike?) typing
+def get_files(data_dir: str, filenames: list[str], prefix: str="m", extention: str="fits") -> list[str]:
+    # Handle finding valid files
+    if filenames == None:
+        filenames = glob.glob(f"{data_dir}/{prefix}*{'.' if extention else ''}{extention}")
+
+        if filenames == []:
+            raise FileNotFoundError(f"No filenames provided and wildcard search of '{data_dir}/{prefix}*{'.' if extention else ''}{extention}' returned no matches.")
+
+    # Handle recieving list of files
+    for file in filenames:
+        if os.path.isfile(os.path.join(data_dir, file)):
+            continue
+        else:
+            raise FileNotFoundError(f"{file} not found in the data directory {data_dir}")
+    
+    logging.debug(f"Files found: {filenames}")
+    return filenames
+
+
+def get_arc(filenames: str, exclude_arc: bool=False) -> str:
+    if filenames == []:
+        raise FileNotFoundError(f"No files to search for the arc in")
+    
+    # Handle exclusion of arc
+    if exclude_arc:
+        return ''
+
+    # Handle inclusion of arc
+    for file in filenames:
+        with pyfits.open(file) as hdu:
+            if hdu['PRIMARY'].header['OBJECT'] == 'ARC':
+                return file
+
+    # Handle arc not found
+    raise FileNotFoundError(f"No arc file found in the data directory {os.path.dirname(filenames[0])}")
 
 
 def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.array:

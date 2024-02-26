@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "2024.02.23"
+__version__ = "2024.02.26"
 __author__ = "Justin Cooper"
-__email__ = "justin.jb78@gmail.com"
+__email__ = "justin.jb78+Masters@gmail.com"
 
 # General Imports
 import os
@@ -107,6 +107,7 @@ subparsers = parser.add_subparsers(
 split_parser = subparsers.add_parser(
     "split", aliases=["s"], help="Split mode", parents=[parent_parser]
 )
+# 'children' split args here
 split_parser.set_defaults(mode="split", func=split.Split)
 
 
@@ -114,6 +115,7 @@ split_parser.set_defaults(mode="split", func=split.Split)
 join_parser = subparsers.add_parser(
     "join", aliases=["j"], help="Join mode", parents=[parent_parser]
 )
+# 'children' join args here
 join_parser.set_defaults(mode="join", func=join.Join)
 
 
@@ -139,12 +141,14 @@ corr_parser.add_argument(
     "--continuum_order",
     type=int,
     default=11,
+    dest="cont_ord",
     help="Order of continuum to remove from spectra. Higher orders recommended to remove most variation, leaving only significant features.",
 )
 corr_parser.add_argument(
     "-p",
     "--continuum_plot",
     action="store_true",
+    dest="cont_plot",
     help="Flag to plot fitting of continuum. Used to confirm only notable features left in spectrum.",
 )
 corr_parser.add_argument(
@@ -205,17 +209,20 @@ args.verbose = pu.parse_loglevel(args.verbose)
 
 
 # Begin logging
-logfile = pu.parse_logfile(args.log)
-# logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-logging.basicConfig(filename=logfile, level=args.verbose)
-# format=logFormatter
+logging.basicConfig(
+    filename=args.log,
+    format='%(asctime)s - %(module)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=args.verbose
+)
 # handlers=[logging.StreamHandler(sys.stdout)]
 
 
 # Run mode using arguments
 logging.debug(f"Argparse namespace: {args}")
 logging.info(f"Mode:{args.mode}")
-args.func(args).process()
+# args.func(args).process()
+args.func(**vars(args)).process()
 
 
 # Confirm all processes completed and exit without error

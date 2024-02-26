@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "17.05.2022"
 __author__ = "Justin Cooper"
-__email__ = "justin.jb78@gmail.com"
+__email__ = "justin.jb78+Masters@gmail.com"
 
 import os
 import sys
+import logging
 import itertools as iters
 from argparse import Namespace
-import logging
 
 import numpy as np
 from numpy.polynomial import chebyshev
@@ -71,22 +70,23 @@ class CrossCorrelate:
 
     """
 
-    # def __init__(
-    #     self,
-    #     in1: str,
-    #     in2: str = None,
-    #     split_ccd: bool = True,
-    #     cont: int = 11,
-    #     cont_plot: bool = False,
-    #     offset: int = 0,
-    #     save_name: str = None,
-    # ) -> None:
-    def __init__(self, args: Namespace) -> None:
+    def __init__(
+        self,
+        data_dir: str,
+        fits_list: list,
+        in1: str,
+        in2: str = None,
+        split_ccd: bool = True,
+        cont: int = 11,
+        cont_plot: bool = False,
+        offset: int = 0,
+        save_name: str = None,
+    ) -> None:
 
         self.invert = False
         self.wavUnits = "Å"
-        self.wav1, self.spec1, self.bpm1 = self.checkLoad(args.in1)
-        self.wav2, self.spec2, self.bpm2 = self.checkLoad(args.in2, args.in1)
+        self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
+        self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
 
         self.exts = self.spec1.shape[0]
         self.ccds = 1
@@ -97,24 +97,24 @@ class CrossCorrelate:
         self.bounds2 = np.array(
             [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
         )
-        if args.split_ccd:
+        if split_ccd:
             self.splitCCD()
 
-        self.cont = args.cont
-        if args.cont > 0:
-            self.rmvCont(args.cont_plot)
+        self.cont = cont
+        if cont > 0:
+            self.rmvCont(cont_plot)
 
         # Add an offset to the spectra to test cross correlation
         self.spec1 = np.insert(
-            self.spec1, [0] * args.offset, self.spec1[:, :args.offset], axis=-1
+            self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
         )[:, : self.spec1.shape[-1]]
 
         self.corrdb = []
         self.lagsdb = []
-        self.correlate()
+        # self.correlate()
 
-        self.save_name = args.save_name
-        self.checkPlot()
+        self.save_name = save_name
+        # self.checkPlot()
 
         return
 
@@ -298,3 +298,18 @@ class CrossCorrelate:
             fig.savefig(fname=self.save_name)
 
         return
+
+    def process(self) -> None:
+        logging.debug(f"Processing the following files: {self.fits_list}")
+        for target in self.fits_list:
+            self.correlate(target)
+            self.checkPlot()
+
+        return
+
+
+def main(argv) -> None: # TODO@JustinotherGitter: Handle cross_correlate.py called directly
+    return
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

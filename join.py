@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "20.09.2021"
 __author__ = "Justin Cooper"
-__email__ = "justin.jb78@gmail.com"
+__email__ = "justin.jb78+Masters@gmail.com"
 
 import os
 import sys
+import logging
 from typing import List
 import re
+
 import numpy as np
 from numpy.polynomial.chebyshev import chebgrid2d as chebgrid2d
 from numpy.polynomial.legendre import leggrid2d as leggrid2d
 from astropy.io import fits as pyfits
 from utils.specpolpy3 import read_wollaston, split_sci
 import lacosmic
+
+from utils.SharedUtils import get_files, get_arc
 
 DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
 SAVE_PREFIX = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
@@ -38,9 +41,6 @@ class Join:
         split_row : int, optional
             The row that the data was split along.
             (The default is 517, the middle row of the CCD's)
-        verbose : bool, optional
-            Decides whether the output should be recorded to the terminal window.
-            (The default is False, no output written to the terminal window)
         no_arc : bool, optional
             Decides whether the arc frames should be recombined.
             (The default is True, since polsalt only uses the arc frames until spectral extraction)
@@ -63,41 +63,22 @@ class Join:
                 fits_list : List[str] = None,
                 solutions_list : List[str] = None,
                 split_row : int = 517,
-                verbose : bool = False,
                 no_arc : bool = True,
-                save_prefix = None
+                save_prefix = None,
+                **kwargs
                 ) -> None:
         self.data_dir = data_dir # TODO@JustinotherGitter: Check valid path
         self.database = database
-        self.fits_list = self.get_files(fits_list)
+        self.fits_list = get_files(data_dir=self.data_dir, filenames=fits_list, prefix="mxgbp", extention="fits")
         self.fc_files = self.get_solutions(solutions_list)
         self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows / 2 instead of 517
-        self.verbose = verbose
         self.save_prefix = SAVE_PREFIX
         if type(save_prefix) == dict:
             self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
         self.no_arc = no_arc
-        self.arc = self.get_arc()
+        self.arc = get_arc(self.fits_list)
         return
-
-
-    def get_files(self, flist: List, prefix: str="m", extention: str="fits") -> List[str]:
-        # Handle recieving list of files
-        if flist != None:
-            for fl in flist:
-                if os.path.isfile(os.path.join(self.data_dir, fl)):
-                    continue
-                else:
-                    raise FileNotFoundError(f"{fl} not found in the data directory {self.data_dir}")
-            return flist
-
-        # Handle finding valid files
-        flist = []
-        for fl in os.listdir(self.data_dir):
-            if os.path.isfile(os.path.join(self.data_dir, fl)) and (prefix == fl[0]) and (extention == fl.split(".")[-1]):
-                flist.append(fl)
-        return flist
 
     
     def get_solutions(self, wavlist: List, prefix: str="fc") -> List[str]:
@@ -111,29 +92,16 @@ class Join:
             return wavlist
 
         # Handle finding solutions
-        ws = [] # TODO@JustinotherGitter: Check order of solutions
+        ws = [] # TODO@JustinotherGitter: Double check order of solutions
         for fl in os.listdir(os.path.join(self.data_dir, self.database)):
             if os.path.isfile(os.path.join(self.data_dir, self.database, fl)) and (prefix == fl[0:2]):
                 ws.append(fl)
 
         if len(ws) != 2:
-            # Handle no solutions found
-            raise FileNotFoundError(f"No wavelength solution (fc...) found in the solution directory {os.path.join(self.data_dir, self.database)}")
+            # Handle incorrect number of solutions found
+            raise FileNotFoundError(f"Incorrect amount of wavelength solutions ({len(ws)} fc... files) found in the solution directory {os.path.join(self.data_dir, self.database)}")
         
         return ws
-
-    
-    def get_arc(self) -> str:
-
-        # Handle finding of arc
-        for fl in self.fits_list:
-            with pyfits.open(fl) as hdu:
-                if hdu['PRIMARY'].header['OBJECT'] == 'ARC':
-                    if self.no_arc: self.fits_list.remove(fl)
-                    return fl
-
-        # Handle arc not found
-        raise FileNotFoundError(f"No arc found in the data directory {self.data_dir}")
 
 
     def join_file(self, file: str) -> None:
@@ -200,7 +168,7 @@ class Join:
             chebvals = []
             with open(self.database + "/" + fname) as fcfile: # TODO@JustinotherGitter: Check order of fc files here
                 for i in fcfile:
-                    # TODO@JustinotherGitter: check regex substitution correct
+                    # TODO@JustinotherGitter: Double check regex substitution correct
                     chebvals.append(re.sub(r"[\n\t\s]*", "", i))
 
             if chebvals[9] != "1.": #xterms - Cross-term type 
@@ -275,30 +243,34 @@ class Join:
         whdu["BPM"].data[0] = np.where(whdu["WAV"].data[0] == 0, 1, whdu["BPM"].data[0])
         whdu["BPM"].data[1] = np.where(whdu["WAV"].data[1] == 0, 1, whdu["BPM"].data[1])
         
-        whdu.writeto(f"w{file}", overwrite="True")
+        whdu.writeto(f"w{os.path.basename(file)}", overwrite="True")
     
     def check_crop(self, hdu, o_file, e_file) -> int:
         cropsize = 0
         o_y = 0
         e_y = 0
+
         with pyfits.open(o_file) as o:
             o_y = o[0].data.shape[0]
+
         with pyfits.open(e_file) as e:
             e_y = e[0].data.shape[0]
 
         if hdu["SCI"].data.shape[0] != (o_y + e_y):
             # Get crop size, assuming crop same on both sides
             cropsize = int(0.5 * (hdu["SCI"].data.shape[0] - o_y - e_y))
+        
         return cropsize
 
     def process(self) -> None:
+        logging.debug(f"Processing the following files: {self.fits_list}")
         for target in self.fits_list:
             self.join_file(target)
         
         return
 
 
-def main(argv) -> None: # TODO@JustinotherGitter: Handle Join.py called directly
+def main(argv) -> None: # TODO@JustinotherGitter: Handle join.py called directly
     return
 
 if __name__ == "__main__":

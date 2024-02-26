@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "20.04.2022"
 __author__ = "Justin Cooper"
-__email__ = "justin.jb78@gmail.com"
+__email__ = "justin.jb78+Masters@gmail.com"
 
 import os
 import sys
@@ -82,11 +81,16 @@ class Skylines:
 
         return cw, cs
 
-    def rmvCont():
+    def rmvCont(self):
 
-        return spec / cont - 1
+        return self.spec / self.cont - 1
 
     def skylines(self,) -> None:
         pass
 
-    
+
+def main(argv) -> None: # TODO@JustinotherGitter: Handle skylines.py called directly
+    return
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 
 __author__ = "Justin Cooper"
-__version__ = "18.02.2022"
-__email__ = "justin.jb78@gmail.com"
+__email__ = "justin.jb78+Masters@gmail.com"
 
 import os
 import sys
+import logging
 from typing import List
 from copy import deepcopy
+
 import numpy as np
 from astropy.io import fits as pyfits
+
+from utils.SharedUtils import get_files, get_arc
 
 class Split:
     """
@@ -27,9 +30,6 @@ class Split:
         split_row : int, optional
             The row that the data will be split along.
             (The default is 517, the middle row of the CCD's)
-        verbose : bool, optional
-            Decides whether the output should be recorded to the terminal window.
-            (The default is False, only the most neccesary output written to the terminal window)
         no_arc : bool, optional
             Decides whether the arc frames should be recombined.
             (The default is False, since polsalt only uses the arc frames until spectral extraction)
@@ -49,57 +49,23 @@ class Split:
     """
     def __init__(self,
                 data_dir : str,
-                fits_list : List = None, # TODO@JustinotherGitter: Add Lists inner type
+                fits_list : list = None, # TODO@JustinotherGitter: Add Lists inner type
                 split_row : int = 517,
-                verbose : bool = False,
                 no_arc : bool = False,
-                save_prefix = None
+                save_prefix = None,
+                **kwargs
                 ) -> None:
         self.data_dir = data_dir
-        self.fits_list = self.get_files(fits_list)
+        self.fits_list = get_files(data_dir=data_dir, filenames=fits_list, prefix="mxgbp", extention="fits")
         self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows // 2 instead of 517
-        self.verbose = verbose
         self.save_prefix = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
         if type(save_prefix) == dict:
             self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
-        self.arc = self.get_arc(no_arc)
+        self.arc = get_arc(self.fits_list, no_arc)
         self.o_files = []
         self.e_files = []
         return
-
-
-    def get_files(self, flist: List, prefix: str="m", extention: str="fits") -> List: # TODO@JustinotherGitter: Add Lists inner type
-        # Handle recieving list of files
-        if flist != None:
-            for fl in flist:
-                if os.path.isfile(os.path.join(self.data_dir, fl)):
-                    continue
-                else:
-                    raise FileNotFoundError(f"{fl} not found in the data directory {self.data_dir}")
-            return flist
-
-        # Handle finding valid files
-        flist = []
-        for fl in os.listdir(self.data_dir):
-            if os.path.isfile(os.path.join(self.data_dir, fl)) and (prefix == fl[0]) and (extention == fl.split(".")[-1]):
-                flist.append(fl)
-        return flist
-
-    
-    def get_arc(self, exclude_arc: bool) -> str:
-        # Handle exclusion of arc
-        if exclude_arc:
-            return ''
-
-        # Handle inclusion of arc
-        for fl in self.fits_list:
-            with pyfits.open(fl) as hdu:
-                if hdu['PRIMARY'].header['OBJECT'] == 'ARC':
-                    return fl
-
-        # Handle arc not found
-        raise FileNotFoundError(f"No arc found in the data directory {self.data_dir}")
 
 
     def split_file(self, file: str) -> None: # TODO@JustinotherGitter: replace typing return from None to correct type
@@ -192,6 +158,7 @@ class Split:
 
 
     def process(self) -> None:
+        logging.debug(f"Processing the following files: {self.fits_list}")
         for target in self.fits_list:
             self.split_file(target)
         
@@ -199,7 +166,7 @@ class Split:
         return
 
 
-def main(argv) -> None: # TODO@JustinotherGitter: Handle Split.py called directly
+def main(argv) -> None: # TODO@JustinotherGitter: Handle split.py called directly
     return
 
 if __name__ == "__main__":
