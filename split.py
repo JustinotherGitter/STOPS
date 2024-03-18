@@ -7,13 +7,15 @@ __email__ = "justin.jb78+Masters@gmail.com"
 import os
 import sys
 import logging
-from typing import List
 from copy import deepcopy
 
 import numpy as np
 from astropy.io import fits as pyfits
 
 from utils.SharedUtils import get_files, get_arc
+
+SAVE_PREFIX = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
+
 
 class Split:
     """
@@ -48,17 +50,17 @@ class Split:
             # TODO@JustinotherGitter : Complete docs for which errors are raised and when
     """
     def __init__(self,
-                data_dir : str,
-                fits_list : list = None, # TODO@JustinotherGitter: Add Lists inner type
-                split_row : int = 517,
-                no_arc : bool = False,
+                data_dir: str,
+                fits_list: list = None, # TODO@JustinotherGitter: Add Lists inner type
+                split_row: int = 517,
+                no_arc: bool = False,
                 save_prefix = None,
                 **kwargs
                 ) -> None:
         self.data_dir = data_dir
         self.fits_list = get_files(data_dir=data_dir, filenames=fits_list, prefix="mxgbp", extention="fits")
         self.split_row = split_row # TODO@JustinotherGitter: Check valid split and set default to rows // 2 instead of 517
-        self.save_prefix = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
+        self.save_prefix = SAVE_PREFIX
         if type(save_prefix) == dict:
             self.save_prefix = save_prefix # TODO@JustinotherGitter: Check valid list
 
@@ -67,8 +69,7 @@ class Split:
         self.e_files = []
         return
 
-
-    def split_file(self, file: str) -> None: # TODO@JustinotherGitter: replace typing return from None to correct type
+    def split_file(self, file: os.PathLike) -> None: # TODO@JustinotherGitter: replace typing return from None to correct type
         # Create empty HDUList
         O_beam = pyfits.HDUList()
         E_beam = pyfits.HDUList()
@@ -87,8 +88,8 @@ class Split:
 
             # Handle prefix and names
             pref = 'arc' if file == self.arc else 'beam'
-            o_name = self.save_prefix[pref][0] + file[-9:]
-            e_name = self.save_prefix[pref][1] + file[-9:]
+            o_name = self.save_prefix[pref][0] + file.name[-9:]
+            e_name = self.save_prefix[pref][1] + file.name[-9:]
             
             # Add split data to O & E beam lists
             self.update_beam_lists(o_name, e_name, pref == 'arc')
@@ -103,8 +104,7 @@ class Split:
 
             return O_beam, E_beam
 
-
-    def split_ext(self, hdulist, ext="SCI") -> np.ndarray: # TODO@JustinotherGitter: Check return is array
+    def split_ext(self, hdulist, ext:str = "SCI") -> np.ndarray: # TODO@JustinotherGitter: Check return is array
         hdu = deepcopy(hdulist)
         rows, cols = hdu[ext].data.shape
 
@@ -126,15 +126,13 @@ class Split:
 
         return hdu
 
-
-    def crop_file(self, hdulist, crop: int=40) -> None: # TODO@JustinotherGitter: Return type and handle default crop better
+    def crop_file(self, hdulist, crop: int = 40) -> None: # TODO@JustinotherGitter: Return type and handle default crop better
         o_data = hdulist['SCI'].data[1, 0:-crop]
         e_data = hdulist['SCI'].data[0, crop:]
         
         return o_data, e_data
-    
-    
-    def update_beam_lists(self, o_name, e_name, arc=True) -> None: # TODO@JustinotherGitter: Add return?
+      
+    def update_beam_lists(self, o_name, e_name, arc: bool = True) -> None: # TODO@JustinotherGitter: Add return?
         if arc:
             self.o_files.insert(0, o_name)
             self.e_files.insert(0, e_name)
@@ -144,7 +142,6 @@ class Split:
             
         return
     
-
     def save_beam_lists(self) -> None:
         with open("o_frames", "w+") as f_o:
             for i in self.o_files:
@@ -156,10 +153,9 @@ class Split:
 
         return
 
-
     def process(self) -> None:
-        logging.debug(f"Processing the following files: {self.fits_list}")
         for target in self.fits_list:
+            logging.debug(f"Processing {target}")
             self.split_file(target)
         
         self.save_beam_lists()

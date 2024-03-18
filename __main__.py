@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "2024.02.26"
+__version__ = "2024.03.01"
 __author__ = "Justin Cooper"
 __email__ = "justin.jb78+Masters@gmail.com"
 
@@ -18,11 +18,7 @@ import skylines
 from utils import ParserUtils as pu
 
 
-PROG = (
-    "Supplementary TOols for Polsalt Spectropolarimetry (STOPS)"
-    + " OR "
-    + "Spectropolarimetric Wavelength calibration Alternative for Polsalt (SWAP)"
-)
+PROG = "Supplementary TOols for Polsalt Spectropolarimetry (STOPS)"
 DESCRIPTION = """
 Supplementary tools created for SALT's POLSALT pipeline, allowing for wavelength calibrations with IRAF.
 Additional tools provide support for cross correlating complementary polarimetric beams.
@@ -41,7 +37,9 @@ PREFIX = ["obeam", "ebeam"]
 
 # Universal parser
 parser = argparse.ArgumentParser(
-    description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter
+    prog=PROG,
+    description=DESCRIPTION,
+    formatter_class=argparse.RawDescriptionHelpFormatter
 )
 parser.add_argument(
     "-V",
@@ -63,11 +61,7 @@ parser.add_argument(
     type=pu.parse_logfile,
     help="Filename to save logging to. Defaults to None.",
 )
-
-
-# Parent parser template
-parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument(
+parser.add_argument(
     "data_dir",
     action="store",
     nargs="?",
@@ -75,20 +69,24 @@ parent_parser.add_argument(
     type=pu.parse_path,
     help="Path to directory containing data. Defaults to the CWD.",
 )
-parent_parser.add_argument(
+
+
+# Split / Join specific arguments
+split_join_args = argparse.ArgumentParser(add_help=False)
+split_join_args.add_argument(
     "-n",
     "--no_arc",
     action="store_true",
     help="Flag to exclude arc files from processing.",
 )
-parent_parser.add_argument(
+split_join_args.add_argument(
     "-s",
     "--split_row",
     default=SPLITROW,
     type=int,
     help=f"Row along which to split the O and E beams at. Defaults to {SPLITROW}.",
 )
-parent_parser.add_argument(
+split_join_args.add_argument(
     "-p",
     "--save_prefix",
     nargs=2,
@@ -105,17 +103,19 @@ subparsers = parser.add_subparsers(
 
 # Split subparser mode
 split_parser = subparsers.add_parser(
-    "split", aliases=["s"], help="Split mode", parents=[parent_parser]
+    "split", aliases=["s"], help="Split mode", parents=[split_join_args]
 )
 # 'children' split args here
+# Change defaults here
 split_parser.set_defaults(mode="split", func=split.Split)
 
 
 # Join subparser mode
 join_parser = subparsers.add_parser(
-    "join", aliases=["j"], help="Join mode", parents=[parent_parser]
+    "join", aliases=["j"], help="Join mode", parents=[split_join_args]
 )
 # 'children' join args here
+# Change defaults here
 join_parser.set_defaults(mode="join", func=join.Join)
 
 
@@ -123,12 +123,14 @@ join_parser.set_defaults(mode="join", func=join.Join)
 corr_parser = subparsers.add_parser(
     "correlate", aliases=["x"], help="Cross correlation mode"
 )
+# 'children' correlate args here
 corr_parser.add_argument(
     "filenames",
     action="store",
+    # dest="fits_list",
     nargs="+",
-    type=pu.parse_file,
-    help="Filenames to be compared. Provide only one filename for O/E beam comparisons.",
+    type=pu.parse_corr_file,
+    help="Filenames to be compared. Provide only one filename for O/E beam comparisons. Include relative path to working directory.",
 )
 corr_parser.add_argument(
     "-ccd",
@@ -163,6 +165,7 @@ corr_parser.add_argument(
     "--save_name",
     help="Name to save plot with. If left undefined, plot will not be saved.",
 )
+# Change defaults here
 corr_parser.set_defaults(mode="correlate", func=cross_correlate.CrossCorrelate)
 
 
@@ -170,6 +173,7 @@ corr_parser.set_defaults(mode="correlate", func=cross_correlate.CrossCorrelate)
 sky_parser = subparsers.add_parser(
     "skylines", aliases=["sky"], help="Sky line check mode"
 )
+# 'children' skyline args here
 sky_parser.add_argument(
     "filenames",
     action="store",
@@ -203,10 +207,12 @@ sky_parser.add_argument(
 sky_parser.set_defaults(mode="skyline", func=skylines.Skylines)
 
 
-# Parse mode and arguments + any keyword clean up
+# Parse 'mode' and arguments + any keyword clean up
 args = parser.parse_args()
 args.verbose = pu.parse_loglevel(args.verbose)
-
+args.log = args.data_dir / args.log
+if "filenames" in args:
+    args.filenames = pu.flatten(args.filenames)
 
 # Begin logging
 logging.basicConfig(
@@ -215,14 +221,12 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S',
     level=args.verbose
 )
-# handlers=[logging.StreamHandler(sys.stdout)]
 
 
 # Run mode using arguments
 logging.debug(f"Argparse namespace: {args}")
 logging.info(f"Mode:{args.mode}")
-# args.func(args).process()
-args.func(**vars(args)).process()
+# args.func(**vars(args)).process()
 
 
 # Confirm all processes completed and exit without error

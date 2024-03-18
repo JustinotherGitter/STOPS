@@ -1,7 +1,7 @@
 # Shared helper functions for convenience
 import os
 import logging
-import glob
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,28 +10,46 @@ from astropy.io import fits as pyfits
 from scipy import signal
 
 # TODO@JustinotherGitter: Add pathlike (filelike?) typing
-def get_files(data_dir: str, filenames: list[str], prefix: str="m", extention: str="fits") -> list[str]:
-    # Handle finding valid files
+
+
+def get_files(data_dir: str, filenames: list[str] | None, prefix: str="m", extention: str="fits") -> list[os.PathLike]:
+    nfiles = []
+
     if filenames == None:
-        filenames = glob.glob(f"{data_dir}/{prefix}*{'.' if extention else ''}{extention}")
+        # Handle finding valid files
+        nfiles = Path(data_dir).glob(f"{prefix}*{'.' if extention else ''}{extention}")
+        nfiles = list(sorted(nfiles))
 
-        if filenames == []:
-            raise FileNotFoundError(f"No filenames provided and wildcard search of '{data_dir}/{prefix}*{'.' if extention else ''}{extention}' returned no matches.")
+    else:
+        # Handle recieving list of files
+        for file in sorted(filenames):
+            # Validate
+            if Path(data_dir, file).is_file():
+                nfiles.append(file)
+            else:
+                errMsg = f"{file} not found in the data directory {data_dir}, file unlisted."
+                logging.warn(errMsg)
 
-    # Handle recieving list of files
-    for file in filenames:
-        if os.path.isfile(os.path.join(data_dir, file)):
-            continue
+    # raise error if nfiles is empty
+    if nfiles == []:
+        if filenames == None:
+            errMsg = f"Wildcard search, '{data_dir}/{prefix}*{'.' if extention else ''}{extention}', "
         else:
-            raise FileNotFoundError(f"{file} not found in the data directory {data_dir}")
+            errMsg = f"Filenames provided, {filenames}, "
+        errMsg += "returned no matches."
+        logging.error(errMsg)
+        raise FileNotFoundError(errMsg)
     
-    logging.debug(f"Files found: {filenames}")
-    return filenames
+    logging.debug(f"Files returned: {nfiles}")
+    return nfiles
 
 
 def get_arc(filenames: str, exclude_arc: bool=False) -> str:
+    # No files provided
     if filenames == []:
-        raise FileNotFoundError(f"No files to search for the arc in")
+        errMsg = f"No files to search for the arc in"
+        logging.error(errMsg)
+        raise FileNotFoundError(errMsg)
     
     # Handle exclusion of arc
     if exclude_arc:
@@ -44,7 +62,9 @@ def get_arc(filenames: str, exclude_arc: bool=False) -> str:
                 return file
 
     # Handle arc not found
-    raise FileNotFoundError(f"No arc file found in the data directory {os.path.dirname(filenames[0])}")
+    errMsg = f"No arc file found within provided files, {filenames}."
+    logging.error(errMsg)
+    raise FileNotFoundError(errMsg)
 
 
 def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.array:

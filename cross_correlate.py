@@ -8,7 +8,6 @@ import os
 import sys
 import logging
 import itertools as iters
-from argparse import Namespace
 
 import numpy as np
 from numpy.polynomial import chebyshev
@@ -72,31 +71,68 @@ class CrossCorrelate:
 
     def __init__(
         self,
-        data_dir: str,
-        fits_list: list,
-        in1: str,
-        in2: str = None,
+        data_dir: os.PathLike,
+        fits_list: list[os.PathLike],
         split_ccd: bool = True,
         cont: int = 11,
         cont_plot: bool = False,
         offset: int = 0,
         save_name: str = None,
+        **kwargs
     ) -> None:
+        # Defined when passed in
+        self.data_dir = data_dir
+        self.fits_list = fits_list
+        self.split_ccd = split_ccd
+        self.cont = cont
+        self.cont_plot = cont_plot
+        self.offset = offset
+        self.save_name = save_name
 
-        self.invert = False
-        self.wavUnits = "Å"
-        self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
-        self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
+        # Defined when processed
+        self.spec = None # spec1, spec2
+        self.wav = None # wav1, wav2
+        self.bpm = None # bpm1, bpm2
 
-        self.exts = self.spec1.shape[0]
+        self.exts = 0
         self.ccds = 1
+        self.bounds = None # bounds1, bounds2
+
+
+        # self.invert = False
+        # self.wavUnits = "Å"
+        # self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
+        # self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
+
+        # Move to process
+        for target in self.fits_list:
+            self.spec, self.wav, self.bpm = self.loadFile(target)
+
+            self.exts = self.spec[0].shape[0]
+
+            # Bounds shape [extensions, ccds, lower / upper bound]
+            self.bounds = self.setBounds()
+
+            if split_ccd:
+                self.splitCCD()
+
+        # self.bounds.append(np.array(
+        #     [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
+        # ))
+        # self.bounds.append(np.array(
+        #     [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
+        # ))
+
+
+        # self.exts = self.spec1.shape[0]
+        # self.ccds = 1
         # Bounds shape [extensions, ccds, lower / upper bound]
-        self.bounds1 = np.array(
-            [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
-        )
-        self.bounds2 = np.array(
-            [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
-        )
+        # self.bounds1 = np.array(
+        #     [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
+        # )
+        # self.bounds2 = np.array(
+        #     [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
+        # )
         if split_ccd:
             self.splitCCD()
 
@@ -117,37 +153,68 @@ class CrossCorrelate:
         # self.checkPlot()
 
         return
+    
+    def loadFile(self, filename: os.PathLike) -> tuple[list, list, list]:
+        spec, wav, bpm = None, None, None
 
-    def checkLoad(self, path1: str, path2: str = None) -> np.ndarray:
-
-        # If the first path is invalid
-        if (path1 == None) or (not os.path.isfile(os.path.expanduser(path1))):
-            # And the second path is not defined, raise an error
-            if path2 == None:
-                raise FileNotFoundError(f"{path1} is invalid")
-
-            # Use the second path but swap the O and E beams
-            path1 = path2
-            self.invert = True
-
-        # Load data
-        with pyfits.open(os.path.expanduser(path1)) as hdu:
+        # Open HDU
+        with pyfits.open(self.data_dir / self.filename) as hdu:
+            #Load spec, wav, and bpm data - indexing [wav, intensity, beam]
             spec = hdu["SCI"].data.sum(axis=1)
-            wav = (
-                np.arange(spec.shape[-1]) * hdu["SCI"].header["CDELT1"]
-                + hdu["SCI"].header["CRVAL1"]
+            wav  = (
+                np.arange(spec.shape[-1]) * hdu["SCI"].header["CDELT1"] + hdu["SCI"].header["CRVAL1"]
             )
             bpm = hdu["BPM"].data.sum(axis=1)
 
+            # Check wavelength units unchanged
             if "Angstroms" not in hdu["SCI"].header["CTYPE1"]:
                 self.wavUnits = hdu["SCI"].header["CTYPE1"]
 
-        # Return data and implement swap if necessary
-        return (wav, spec[::-1], bpm[::-1]) if self.invert else (wav, spec, bpm)
+        # TODO@JustinotherGitter: Recheck return of o and e beams.
+        return ([spec, spec[::-1]], [wav, wav], [bpm, bpm[::-1]])
+
+    def setBounds(self) -> list[np.ndarray, np.ndarray]:
+        bounds = []
+        bounds.append(np.array(
+            [[[0, self.spec[0].shape[-1]]], [[0, self.spec[1].shape[-1]]]], dtype=int
+        ))
+        bounds.append(np.array(
+            [[[0, self.spec[0].shape[-1]]], [[0, self.spec[1].shape[-1]]]], dtype=int
+        ))
+
+        return bounds
+    
+    # def checkLoad(self, path1: str, path2: str = None) -> np.ndarray:
+
+    #     # If the first path is invalid
+    #     if (path1 == None) or (not os.path.isfile(os.path.expanduser(path1))):
+    #         # And the second path is not defined, raise an error
+    #         if path2 == None:
+    #             raise FileNotFoundError(f"{path1} is invalid")
+
+    #         # Use the second path but swap the O and E beams
+    #         path1 = path2
+    #         self.invert = True
+
+    #     # Load data
+    #     with pyfits.open(os.path.expanduser(path1)) as hdu:
+    #         spec = hdu["SCI"].data.sum(axis=1)
+    #         wav = (
+    #             np.arange(spec.shape[-1]) * hdu["SCI"].header["CDELT1"]
+    #             + hdu["SCI"].header["CRVAL1"]
+    #         )
+    #         bpm = hdu["BPM"].data.sum(axis=1)
+
+    #         if "Angstroms" not in hdu["SCI"].header["CTYPE1"]:
+    #             self.wavUnits = hdu["SCI"].header["CTYPE1"]
+
+    #     # Return data and implement swap if necessary
+    #     return (wav, spec[::-1], bpm[::-1]) if self.invert else (wav, spec, bpm)
 
     def splitCCD(self) -> None:
         # Assumed BPM has a value of 2 near the center of each CCD (i.e. sum(bpm == 2) = count(ccd))
         self.ccds = sum(self.bpm1[0] == 2)
+        
         # update bounds to reflect ccds
         self.bounds1 = np.zeros([self.exts, self.ccds, 2], dtype=int)
         self.bounds2 = np.zeros([self.exts, self.ccds, 2], dtype=int)
@@ -300,10 +367,10 @@ class CrossCorrelate:
         return
 
     def process(self) -> None:
-        logging.debug(f"Processing the following files: {self.fits_list}")
         for target in self.fits_list:
-            self.correlate(target)
-            self.checkPlot()
+            logging.debug(f"Processing {target}")
+            # self.correlate(target)
+            # self.checkPlot()
 
         return
 

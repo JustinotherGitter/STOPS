@@ -7,7 +7,6 @@ __email__ = "justin.jb78+Masters@gmail.com"
 import os
 import sys
 import logging
-from typing import List
 import re
 
 import numpy as np
@@ -58,12 +57,12 @@ class Join:
         # TODO@JustinotherGitter : Complete docs for which errors are raised and when
     """
     def __init__(self,
-                data_dir : str,
-                database : str = "database",
-                fits_list : List[str] = None,
-                solutions_list : List[str] = None,
-                split_row : int = 517,
-                no_arc : bool = True,
+                data_dir: str,
+                database: str = "database",
+                fits_list: list[str] = None,
+                solutions_list: list[str] = None,
+                split_row: int = 517,
+                no_arc: bool = True,
                 save_prefix = None,
                 **kwargs
                 ) -> None:
@@ -80,8 +79,7 @@ class Join:
         self.arc = get_arc(self.fits_list)
         return
 
-    
-    def get_solutions(self, wavlist: List, prefix: str="fc") -> List[str]:
+    def get_solutions(self, wavlist: list, prefix: str = "fc") -> list[str]:
         # Handle recieving list of solutions
         if wavlist != None:
             for fl in wavlist:
@@ -103,16 +101,15 @@ class Join:
         
         return ws
 
-
-    def join_file(self, file: str) -> None:
+    def join_file(self, file: os.PathLike) -> None:
         # Create empty wavelength appended hdu list
         whdu = pyfits.HDUList()
         primary_ext = ''
         
         # Handle prefix and names
         pref = 'arc' if file == self.arc else 'beam'
-        o_file = self.save_prefix[pref][0] + file[-9:]
-        e_file = self.save_prefix[pref][1] + file[-9:]
+        o_file = self.save_prefix[pref][0] + file.name[-9:]
+        e_file = self.save_prefix[pref][1] + file.name[-9:]
 
         # Open file
         with pyfits.open(file) as hdu:
@@ -263,8 +260,8 @@ class Join:
         return cropsize
 
     def process(self) -> None:
-        logging.debug(f"Processing the following files: {self.fits_list}")
         for target in self.fits_list:
+            logging.debug(f"Processing {target}")
             self.join_file(target)
         
         return
