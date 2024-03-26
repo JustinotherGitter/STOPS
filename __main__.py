@@ -18,14 +18,17 @@ import skylines
 from utils import ParserUtils as pu
 
 
-PROG = "Supplementary TOols for Polsalt Spectropolarimetry (STOPS)"
+PROG = "STOPS"
 DESCRIPTION = """
-Supplementary tools created for SALT's POLSALT pipeline, allowing for wavelength calibrations with IRAF.
-Additional tools provide support for cross correlating complementary polarimetric beams.
-Scripts created for and as part of Master thesis (2024).
+Supplementary TOols for Polsalt Spectropolarimetry (STOPS) is a
+collection of supplementary tools created for SALT's POLSALT pipeline,
+allowing for wavelength calibrations with IRAF. The tools provide
+support for slitting and joining polsalt formatted data as well as
+cross correlating complementary polarimetric beams.
 
 DOI: 10.22323/1.401.0056
 """
+# Scripts created for and as part of Master thesis (2024).
 
 SPLITROW = 517
 PREFIX = ["obeam", "ebeam"]
