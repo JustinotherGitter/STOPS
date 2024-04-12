@@ -1,4 +1,5 @@
-# Shared helper functions for convenience
+# MARK: Imports
+
 import os
 import logging
 from pathlib import Path
@@ -13,6 +14,8 @@ from scipy import signal
 
 
 def get_files(data_dir: str, filenames: list[str] | None, prefix: str="m", extention: str="fits") -> list[os.PathLike]:
+    # MARK: Get Files
+
     nfiles = []
 
     if filenames == None:
@@ -41,10 +44,13 @@ def get_files(data_dir: str, filenames: list[str] | None, prefix: str="m", exten
         raise FileNotFoundError(errMsg)
     
     logging.debug(f"Files returned: {nfiles}")
+
     return nfiles
 
 
 def get_arc(filenames: str, exclude_arc: bool=False) -> str:
+    # MARK: Get Arc File
+
     # No files provided
     if filenames == []:
         errMsg = f"No files to search for the arc in"
@@ -53,12 +59,14 @@ def get_arc(filenames: str, exclude_arc: bool=False) -> str:
     
     # Handle exclusion of arc
     if exclude_arc:
+
         return ''
 
     # Handle inclusion of arc
     for file in filenames:
         with pyfits.open(file) as hdu:
             if hdu['PRIMARY'].header['OBJECT'] == 'ARC':
+
                 return file
 
     # Handle arc not found
@@ -68,6 +76,8 @@ def get_arc(filenames: str, exclude_arc: bool=False) -> str:
 
 
 def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.array:
+    # MARK: Continuum
+
     if plot:
         fig, axs = plt.subplots(2, 1, True)
         axs[0].plot(w, spec, label='data')
@@ -99,6 +109,8 @@ def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.ar
 
 
 def filtered_continuum(spec, cutoff: float = 0.005, std: float = 1.6, steps: int = 5, plot: bool = False) -> np.ndarray:
+    # MARK: Filtered Continuum
+
     """
     Define the continuum as the low frequency signal of the spectrum
     Filtering as shown in https://swharden.com/blog/2020-09-23-signal-filtering-in-python/
@@ -127,6 +139,8 @@ def filtered_continuum(spec, cutoff: float = 0.005, std: float = 1.6, steps: int
 
 
 def grow(maskedarray: np.ma.masked_array, growth: int = 1) -> np.ma.masked_array:
+    # MARK: Grow
+
     """
     Accepts a masked array and grows the mask by a specified amount
     """

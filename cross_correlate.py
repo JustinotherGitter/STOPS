@@ -100,7 +100,7 @@ class CrossCorrelate:
 
 
         # self.invert = False
-        # self.wavUnits = "Å"
+        # self.wavUnits = "$\AA$"
         # self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
         # self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
 
