@@ -36,7 +36,10 @@ class Skylines:
                  in1 : str,
                  ) -> None:
         self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(in1)
-        self.corrWav, self.corrSpec = self.transform(self.rawWav, self.rawSpec)
+        self.corrWav, self.corrSpec = self.transform(
+            self.rawWav,
+            self.rawSpec
+        )
         self.spec = np.median(self.corrSpec, axis=1)
         self.normSpec = self.rmvCont(self.spec)
 
@@ -65,7 +68,9 @@ class Skylines:
 
         for ext in range(exts):
             # Get middle row (to interpolate the rest of the rows to)
-            avg_max = [np.where(spec[ext][:, col] == spec[ext][:, col].max())[0][0] for col in range(spec[ext].shape[1])]
+            avg_max = [np.where(
+                spec[ext][:, col] == spec[ext][:, col].max()
+            )[0][0] for col in range(spec[ext].shape[1])]
             avg_max = np.sum(avg_max) // spec[ext].shape[1]
 
             # Get wavelength values at row with most trace
@@ -77,7 +82,11 @@ class Skylines:
 
             for row in range(rows):
                 # Spec extension
-                cs[ext][row, :] = np.interp(wav, wav_sol[ext][row, :], spec[ext][row, :])
+                cs[ext][row, :] = np.interp(
+                    wav,
+                    wav_sol[ext][row, :],
+                    spec[ext][row, :]
+                )
 
         return cw, cs
 
@@ -89,7 +98,7 @@ class Skylines:
         pass
 
 
-def main(argv) -> None: # TODO@JustinotherGitter: Handle skylines.py called directly
+def main(argv) -> None:
     return
 
 if __name__ == "__main__":

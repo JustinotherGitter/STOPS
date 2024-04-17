@@ -59,13 +59,10 @@ class CrossCorrelate:
     -------
     None
 
-    Raises
-    ------
-    File not found Error
-        Raised when input spectra or save_name directories are invalid
-
-
-    Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html#scipy.signal.correlate
+    See Also
+    --------
+    scipy.signal.correlate
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html#scipy.signal.correlate
 
     """
 

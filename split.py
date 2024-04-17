@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Module for splitting ``polsalt`` FITS files."""
+
 __author__ = "Justin Cooper"
 __email__ = "justin.jb78+Masters@gmail.com"
 
@@ -15,49 +17,84 @@ import numpy as np
 from astropy.io import fits as pyfits
 
 from utils.SharedUtils import get_files, get_arc
+from utils.Constants import SAVE_PREFIX, CROP_DEFAULT
 
-# MARK: Constants
 
-SAVE_PREFIX = {"beam": ["obeam", "ebeam"], "arc": ["oarc", "earc"]}
-CROP_DEFAULT = 40
-
+# MARK: Split Class
 class Split:
-    # MARK: Split Docstring
-
     """
-    Split class allows for the seperate call of splitting the polsalt FITS files
-    (after basic reductions)
+    The `Split` class allows for the splitting of `polsalt` FITS files 
+    based on the polarization beam. The FITS files must have basic 
+    `polsalt` pre-reductions already applied (`mxgbp...` FITS files).
 
     Parameters
     ----------
     data_dir : str
-        The path to the data (mxgbp*.fits files) to be split
-    fits_list : list of type FITS, optional
-        A list of pre-reduced polsalt FITS files to be split.
-        (The default is None, meaning Split will search for files to split in the data directory)
+        The path to the data to be split
+    fits_list : list[str], optional
+        A list of pre-reduced `polsalt` FITS files to be split within `data_dir`.
+        (The default is None, `Split` will search for `mxgbp*.fits` files)
     split_row : int, optional
-        The row that the data will be split along.
-        (The default is 517, the middle row of the CCD's)
+        The row along which to split the data of each extension in the FITS file.
+        (The default is 517, the SALT RSS CCD's middle row)
     no_arc : bool, optional
         Decides whether the arc frames should be recombined.
-        (The default is False, since polsalt only uses the arc frames until spectral extraction)
-    save_prefix : dict of lists of str, optional
-        The prefix that the O & E beams are saved as.
-        Setting save_prefix = None does not save the split O & E beams
-        (The default is {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]})
+        (The default is False, `polsalt` has no use for the arc after wavelength calibrations)
+    save_prefix : dict[str, list[str]], optional
+        The prefix with which to save the  O & E beams.
+        Setting `save_prefix` = ``None`` does not save the split O & E beams.
+        (The default is SAVE_PREFIX (See Notes))
 
-    Returns
+    Attributes
+    ----------
+    arc : str
+        Name of arc FITS file within `data_dir`.
+        `arc` = `""` if `no_arc` or not detected in `data_dir`.
+    o_files, e_files : list[str]
+        A list of the `O`- and `E`-beam FITS file names.
+        The first entry is the arc file if `arc` defined.
+    data_dir
+    fits_list
+    split_row
+    save_prefix
+
+    Methods
     -------
-    split_FITS : list of sets of O & E beam FITS
-        A list of sets of FITS files that were split and can be returned to IRAF or python.
+    split_file(file: os.PathLike)
+        -> tuple[astropy.io.fits.HDUList]
+        Handles creation and saving the separated FITS files 
+    split_ext(hdulist: astropy.io.fits.HDUList, ext: str = 'SCI')
+        -> astropy.io.fits.HDUList
+        Splits the data in the `ext` extension along the `split_row`
+    crop_file(hdulist: astropy.io.fits.HDUList, crop: int = CROP_DEFAULT (See Notes))
+        -> tuple[numpy.ndarray]
+        Crops the data along the edge of the frame, that is,
+        `O`-beam cropped as [crop:], and 
+        `E`-beam cropped as [:-crop].
+    update_beam_lists(o_name: str, e_name: str)
+        -> None
+        Updates `o_files` and `e_files`.
+    save_beam_lists(file_suffix: str = 'frames')
+        -> None
+        Creates (Overwrites if exists) and writes the `o_files` and `e_files` to files named 
+        `o_{file_suffix}` and `e_{file_suffix}`, respectively.
+    process()
+        -> None
+        Calls `split_file` and `save_beam_lists` on each file in `fits_list` for automation.
+        
+    Other Parameters
+    ----------------
+    **kwargs : dict
+        keyword arguments. Allows for passing unpacked dictionary to the class constructor.
 
-    Raises
-    ------
-
-    """
+    Notes
+    -----
+    Constants set are:
+        SAVE_PREFIX = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
+        CROP_DEFAULT = 40
     
+    """
     # MARK: Split init
-
     def __init__(
         self,
         data_dir: str,
@@ -85,12 +122,25 @@ class Split:
 
         return
 
+    # MARK: Split Files
     def split_file(
         self,
         file: os.PathLike
     ) -> tuple[pyfits.HDUList]:
-        # MARK: Split Files
+        """
+        Split the single FITS file into separated `O`- and `E`- FITS files.
 
+        Parameters
+        ----------
+        file : os.PathLike
+            The name of the FITS file to be split.
+
+        Returns
+        -------
+        tuple[astropy.io.fits.HDUList]
+            Tuple containing the split O and E beam HDULists.
+        
+        """
         # Create empty HDUList
         O_beam = pyfits.HDUList()
         E_beam = pyfits.HDUList()
@@ -125,13 +175,29 @@ class Split:
 
             return O_beam, E_beam
 
+    # MARK: Split extensions
     def split_ext(
         self,
-        hdulist,
+        hdulist: pyfits.HDUList,
         ext: str = "SCI"
     ) -> pyfits.HDUList:
-        # MARK: Split extensions
+        """
+        Split the data of the specified extension of `hdulist` into its `O`- and `E`- beams.
 
+        Parameters
+        ----------
+        hdulist : astropy.io.fits.HDUList
+            The FITS HDUList to be split.
+        ext : str, optional
+            The name of the extension to be split.
+            (Defaults to 'SCI')
+
+        Returns
+        -------
+        astropy.io.fits.HDUList
+            The HDUList with the split applied.
+        
+        """
         hdu = deepcopy(hdulist)
         rows, cols = hdu[ext].data.shape
 
@@ -154,26 +220,56 @@ class Split:
 
         return hdu
 
+    # MARK: Crop files
     def crop_file(
         self,
-        hdulist,
+        hdulist: pyfits.HDUList,
         crop: int = CROP_DEFAULT
     ) -> tuple[np.ndarray]:
-        # MARK: Crop files
+        """
+        Crop the data with respect to the `O`/`E` beam.
 
+        Parameters
+        ----------
+        hdulist : astropy.io.fits.HDUList
+            The HDUList containing the data to be cropped.
+        crop : int, optional
+            The number of rows to be cropped from the bottom and top 
+            of the `O` and `E` beam, respectively.
+            (Defaults to 40)
+
+        Returns
+        -------
+        tuple[numpy.ndarray]
+            Tuple containing the cropped O and E beam data arrays.
+
+        """
         o_data = hdulist["SCI"].data[1, 0:-crop]
         e_data = hdulist["SCI"].data[0, crop:]
 
         return o_data, e_data
 
+    # MARK: Update beam lists
     def update_beam_lists(
         self,
         o_name,
         e_name,
         arc: bool = True
     ) -> None:
-        # MARK: Update beam lists
+        """
+        Update the `o_files` and `e_files` attributes.
 
+        Parameters
+        ----------
+        o_name : str
+            The filename of the O beam.
+        e_name : str
+            The filename of the E beam.
+        arc : bool, optional
+            Indicates whether the first entry should be the arc frame.
+            (Defaults to True)
+
+        """
         if arc:
             self.o_files.insert(0, o_name)
             self.e_files.insert(0, e_name)
@@ -183,22 +279,21 @@ class Split:
 
         return
 
-    def save_beam_lists(self) -> None:
-        # MARK: Save beam lists
-
-        with open("o_frames", "w+") as f_o:
+    # MARK: Save beam lists
+    def save_beam_lists(self, file_suffix: str = 'frames') -> None:
+        with open(f"o_{file_suffix}", "w+") as f_o:
             for i in self.o_files:
                 f_o.write(i + "\n")
 
-        with open("e_frames", "w+") as f_e:
+        with open(f"e_{file_suffix}", "w+") as f_e:
             for i in self.e_files:
                 f_e.write(i + "\n")
 
         return
 
+    # MARK: Process all Listed Images
     def process(self) -> None:
-        # MARK: Process all Listed Images
-
+        """Process all FITS images stored in the `fits_list` attribute"""
         for target in self.fits_list:
             logging.debug(f"Processing {target}")
             self.split_file(target)
@@ -207,8 +302,10 @@ class Split:
 
         return
 
-
+# MARK: Main function
 def main(argv) -> None:
+    """Main function."""
+    
     return
 
 

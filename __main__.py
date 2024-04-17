@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Argument parser for STOPS."""
+
 __version__ = "2024.04.13"
 __author__ = "Justin Cooper"
 __email__ = "justin.jb78+Masters@gmail.com"
@@ -16,9 +18,9 @@ import cross_correlate
 import skylines
 
 from utils import ParserUtils as pu
+from utils.Constants import SPLIT_ROW, PREFIX
 
 # MARK: Constants
-
 PROG = "STOPS"
 DESCRIPTION = """
 Supplementary TOols for Polsalt Spectropolarimetry (STOPS) is a
@@ -29,10 +31,6 @@ cross correlating complementary polarimetric beams.
 
 DOI: 10.22323/1.401.0056
 """
-# Scripts created for and as part of Master thesis (2024).
-
-SPLITROW = 517
-PREFIX = ["obeam", "ebeam"]
 
 
 # MARK: Universal Parser
@@ -91,11 +89,11 @@ split_join_args.add_argument(
 split_join_args.add_argument(
     "-s",
     "--split_row",
-    default=SPLITROW,
+    default=SPLIT_ROW,
     type=int,
     help=(
         "Row along which the O and E beams are split. "
-        f"Defaults to polsalt's default -> {SPLITROW}."
+        f"Defaults to polsalt's default -> {SPLIT_ROW}."
     ),
 )
 split_join_args.add_argument(

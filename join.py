@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Module for joining the split FITS files with an external wavelength solution."""
+
 __author__ = "Justin Cooper"
 __email__ = "justin.jb78+Masters@gmail.com"
 
 # MARK: Imports
-
 import os
 import sys
 import logging
@@ -15,61 +16,120 @@ import numpy as np
 from numpy.polynomial.chebyshev import chebgrid2d as chebgrid2d
 from numpy.polynomial.legendre import leggrid2d as leggrid2d
 from astropy.io import fits as pyfits
-from utils.specpolpy3 import read_wollaston, split_sci
 
-# from lacosmic import lacosmic
+# from lacosmic import lacosmic # ccdproc ~6x faster
 from ccdproc import cosmicray_lacosmic as lacosmic
 
-
+from utils.specpolpy3 import read_wollaston, split_sci
 from utils.SharedUtils import get_files, get_arc
-
-# MARK: Constants
-
-DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
-SAVE_PREFIX = {"beam": ["obeam", "ebeam"], "arc": ["oarc", "earc"]}
-
-# CR Cleaning parameters (Deprecated with ccdproc implementation)
-CR_CONTRAST = 2
-CR_THRESHOLD = 4
-CR_NEIGHBOUR_THRESHOLD = 4
-# Gain and Readnoise still valid for ccdproc, sourced from
-# https://pysalt.salt.ac.za/proposal_calls/current/ProposalCall.html
-GAIN = 1
-READNOISE = 3.3
+from utils.Constants import DATADIR, SAVE_PREFIX, CR_PARAMS
 
 
+# MARK: Join Docstring
 class Join:
-    # MARK: Join Docstring
-
     """
-    Join class allows for the seperate call of joining the wavelength calibrated O & E beam FITS files
+    The `Join` class allows for the joining of previously 
+    split files and the appending of an external wavelength 
+    solution to the `polsalt` FITS file format.
 
     Parameters
     ----------
-    path_name : str
-        The path to the data (wmxgbp*.fits files) to be joined
+    data_dir : str
+        The path to the data to be joined
+    database : str, optional
+        The name of the `IRAF` database folder.
+        (The default is "database")
+    fits_list : list[str], optional
+        A list of pre-reduced `polsalt` FITS files to be joined within `data_dir`.
+        (The default is ``None``, `Join` will search for `mxgbp*.fits` files)
+    solutions_list: list[str], optional
+        A list of solution filenames from which the wavelength solution is created.
+        (The default is ``None``, `Join` will search for `fc*` files within the `database` directory)
     split_row : int, optional
-        The row that the data was split along.
-        (The default is 517, the middle row of the CCD's)
-    no_arc : bool, optional
-        Decides whether the arc frames should be recombined.
-        (The default is True, since polsalt only uses the arc frames until spectral extraction)
-    save_pref : list of str, optional
-        The prefix that the O & E beams are saved as.
-        (The default is ["obeam", "ebeam"], which is what split defaults to)
+        The row along which the data of each extension in the FITS file was split.
+        Necessary when Joining cropped files.
+        (The default is 517, the SALT RSS CCD's middle row)
+    save_prefix : dict[str, list[str]], optional
+        The prefix with which the previously split `O`- & `E`-beams were saved.
+        Used for detecting if cropping was applied during the splitting procedure.
+        (The default is SAVE_PREFIX (See Notes))
+    verbose : int, optional
+        The level of verbosity to use for the Cosmic ray rejection
+        (The default is 30, I.E. logging.INFO)
+    
+    Attributes
+    ----------
+    fc_files : list[str]
+        Valid solutions found from `solutions_list`.
+    custom : bool
+        Internal flag for whether `solutions_list` uses the `IRAF` or a custom format.
+        See Notes for custom solution formatting.
+        (Default (inherited from `solutions_list`) is False)
+    arc : str
+        Deprecated. Name of arc FITS file within `data_dir`.
+    data_dir
+    database
+    fits_list
+    split_row
+    save_prefix
 
-    Returns
+
+    Methods
     -------
-    joined_FITS : list of FITS
-        A list of FITS files that were joined and can be returned to polsalt.
+    get_solutions(wavlist: list | None, prefix: str = "fc")
+        -> (fc_files, custom): tuple[list[str], bool]
+        Parse `solutions_list` and return valid solution files and if they are non-`IRAF` solutions.
+    parse_solution(fc_file: str, xshape: int, yshape: int)
+        -> tuple[dict[str, int], np.ndarray]
+        Loads the wavelength solution file and parses keywords necessary for creating the wavelength extension.
+    join_file(file: os.PathLike)
+        -> None
+        Joins the files, 
+        attaches the wavelength solutions, 
+        performs cosmic ray cleaning, 
+        masks the extension, 
+        and checks cropping performed in `Split`.
+        Writes the FITS file in a `polsalt` valid format.
+    check_crop(hdu: pyfits.HDUList, o_file: str, e_file: str)
+        -> int
+        Opens the split `O`- and `E`-beam FITS files and returns the amount of cropping that was performed.
+    process()
+        -> None
+        Calls `join_file` on each file in `fits_list` for automation.
 
-    Raises
-    ------
-    # TODO@JustinotherGitter : Complete docs for which errors are raised and when
+    
+    Other Parameters
+    ----------------
+    no_arc : bool, optional
+        Deprecated. Decides whether the arc frames should be processed.
+        (The default is False, `polsalt` has no use for the arc after wavelength calibrations)
+    **kwargs : dict
+        keyword arguments. Allows for passing unpacked dictionary to the class constructor.
+    
+    Notes
+    -----
+    Constants set are:
+        DATADIR
+        SAVE_PREFIX
+        CR_PARAMS
+
+    Custom wavelength solutions must be formatted as:
+        `x`,
+        `y`,
+        *coefficients...
+    where the solutions are of order (`x` by `y`) and contain x*y coefficients.
+    The name of the custom wavelength solution file must contain either "cheb" or "leg"
+    for Chebychev or Legendre wavelength solutions, respectively.
+
+    Cosmic ray rejection is performed using lacosmic [1]_ implemented in ccdproc via astroscrappy [2]_.
+
+    References
+    ----------
+    .. [1] van Dokkum 2001, PASP, 113, 789, 1420 (article : http://adsabs.harvard.edu/abs/2001PASP..113.1420V)
+    .. [2] https://zenodo.org/records/1482019
+    
     """
-
     # MARK: Join init
-
     def __init__(
         self,
         data_dir: str,
@@ -102,13 +162,31 @@ class Join:
         self.verbose = verbose < 30
         return
 
+    # MARK: Find 2D WAV Functions
     def get_solutions(
         self,
-        wavlist: list | None,
+        wavlist: list[str] | None,
         prefix: str = "fc"
     ) -> tuple[list[str], bool]:
-        # MARK: Find 2D WAV Functions
+        """
+        Get the list of wavelength solution files.
 
+        Parameters
+        ----------
+        wavlist : list[str] | None
+            A list of custom wavelength solutions files.
+            If ``None``, `Join` will search for wavelength solutions in the `database` directory.
+        prefix : str, optional
+            The prefix of the wavelength solution files.
+            (Defaults to "fc")
+
+        Returns
+        -------
+        tuple[list[str], bool]
+            A tuple containing the list of wavelength solutions files and 
+            a boolean indicating whether custom solutions were provided.
+
+        """
         # No custom solutions
         if not wavlist:
             # Handle finding solutions
@@ -150,14 +228,32 @@ class Join:
 
             return (sorted(wavlist, reverse=True), True) 
 
+    # MARK: Parse 2D WAV Function
     def parse_solution(
         self,
-        fc_file,
+        fc_file: str,
         xshape: int,
         yshape: int
     ) -> tuple[dict[str, int], np.ndarray]:
-        # MARK: Parse 2D WAV Function
+        """
+        Parse the 2D wavelength solution function from `fc_file`.
 
+        Parameters
+        ----------
+        fc_file : str
+            The filename of the wavelength solutions file.
+        xshape : int
+            The x-order of the 2D solution.
+        yshape : int
+            The y-order of the 2D solution.
+
+        Returns
+        -------
+        tuple[dict[str, int], np.ndarray]
+            A tuple containing a dictionary of the parameters of the solution function 
+            and the function coefficients.
+
+        """
         fit_params = {}
         coeff = []
 
@@ -212,9 +308,29 @@ class Join:
 
         return (fit_params, coeff)
 
+    # MARK: Join Files
     def join_file(self, file: os.PathLike) -> None:
-        # MARK: Join Files
+        """
+        Join the `O`- and `E`-beams, attach the wavelength solutions, 
+        perform cosmic ray cleaning, mask the extensions, 
+        and checks cropping performed by `Split`.
+        Write the FITS file in a `polsalt` valid format.
 
+        Parameters
+        ----------
+        file : os.PathLike
+            The path of the FITS file to be joined.
+
+        See Also
+        --------
+        IRAF - `fitcoords` task
+            https://iraf.net/irafdocs/formats/fitcoords.php,
+        numpy.polynomial.chebyshev.chebgrid2d
+            https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebgrid2d.html
+        numpy.polynomial.legendre.leggrid2d
+            https://numpy.org/doc/stable/reference/generated/numpy.polynomial.legendre.leggrid2d.html
+
+        """
         # Create empty wavelength appended hdu list
         whdu = pyfits.HDUList()
         primary_ext = ""
@@ -271,16 +387,9 @@ class Join:
                         self.split_row,
                         ext=ext
                     )[ext].data
-
         # End of hdu calls, close hdu
 
-        # MARK: Wavelength Extension
-
-        # See:
-        # https://iraf.net/irafdocs/formats/fitcoords.php,
-        # https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebgrid2d.html
-        # https://numpy.org/doc/stable/reference/generated/numpy.polynomial.legendre.leggrid2d.html
-
+        # MARK: Join (Wav. Ext.)
         whdu.append(pyfits.ImageHDU(name="WAV"))
         wav_header = whdu["SCI"].header.copy()
         wav_header["EXTNAME"] = "WAV"
@@ -300,7 +409,6 @@ class Join:
             )
 
             if pars["function"] == 1:  # Function type (1 = chebyshev)
-
                 # Set wavelength extention values to function
                 whdu["WAV"].data[num] = chebgrid2d(
                     x=np.linspace(-1, 1, pars["ymax"]),
@@ -309,7 +417,6 @@ class Join:
                 )
 
             elif pars["function"] == 2:  # Function type (2 = legendre)
-
                 # Set wavelength extention values to function
                 whdu["WAV"].data[num] = leggrid2d(
                     x=np.linspace(-1, 1, pars["ymax"]),
@@ -318,7 +425,6 @@ class Join:
                 )
 
             else:
-                # TODO@JustinotherGitter: Handle other functions?
                 msg = (
                     "Function type not recognised, please wavelength "
                     "calibrate using either chebychev or legendre."
@@ -326,25 +432,20 @@ class Join:
                 raise Exception(msg)
 
             # MARK: Cosmic Ray Cleaning
-
-            # Constants set work well with base lacosmic.
-            # ccdproc lacosmic needs testing as parameter names differ
-            # ccdproc lacosmic uses 'gain', defaults to 1
-            # https://www.astropy.org/ccd-reduction-and-photometry-guide/v/dev/notebooks/08-03-Cosmic-ray-removal.html
-
+            # See utils.Constants for `CR_PARAMS` discussion
             whdu["SCI"].data[num] = lacosmic(
                 whdu["SCI"].data[num],
-                # contrast=CR_CONTRAST,
-                # threshold=CR_THRESHOLD,
-                # neighbor_threshold=CR_NEIGHBOUR_THRESHOLD,
-                # effective_gain=GAIN,
-                # background=None,
-                readnoise=READNOISE,
+                # contrast=CR_PARAMS['CR_CONTRAST'],
+                # threshold=CR_PARAMS['CR_THRESHOLD'],
+                # neighbor_threshold=CR_PARAMS['CR_NEIGHBOUR_THRESHOLD'],
+                # effective_gain=CR_PARAMS['GAIN'],
+                # background=CR_PARAMS['BACKGROUND'],
+                readnoise=CR_PARAMS['READNOISE'],
+                gain=CR_PARAMS['GAIN'],
                 verbose=self.verbose,
             )[0]
 
         # MARK: WAV masking
-
         # Left & Right Crop
         whdu["WAV"].data[whdu["WAV"].data[:] < 3_000] = 0.0
         whdu["WAV"].data[whdu["WAV"].data[:] >= 10_000] = 0.0
@@ -377,7 +478,6 @@ class Join:
                 whdu["WAV"].data[1, int(col) + cropsize :, c] = 0.0
 
         # MARK: BPM masking
-
         whdu["BPM"].data[0] = np.where(
             whdu["WAV"].data[0] == 0,
             1,
@@ -393,9 +493,31 @@ class Join:
 
         return
 
-    def check_crop(self, hdu, o_file, e_file) -> int:
-        # MARK: Check Crop
-        
+    # MARK: Check Crop
+    def check_crop(
+        self,
+        hdu: pyfits.HDUList,
+        o_file: str,
+        e_file: str
+    ) -> int:
+        """
+        Check if cropping is necessary when joining `O`- and `E`-beams.
+
+        Parameters
+        ----------
+        hdu : astropy.io.fits.HDUList
+            The HDUList to check for cropping.
+        o_file : str
+            The name of the previously split `O`-beam FITS file.
+        e_file : str
+            The name of the previously split `E`-beam FITS file.
+
+        Returns
+        -------
+        int
+            The number of rows which were cropped by `Split`.
+
+        """
         cropsize = 0
         o_y = 0
         e_y = 0
@@ -412,9 +534,9 @@ class Join:
 
         return cropsize
 
+    # MARK: Process all Listed Images
     def process(self) -> None:
-        # MARK: Process all Listed Images
-
+        """Process all FITS images stored in the `fits_list` attribute"""
         for target in self.fits_list:
             logging.debug(f"Processing {target}")
             self.join_file(target)
@@ -423,6 +545,8 @@ class Join:
 
 
 def main(argv) -> None:
+    """Main function."""
+    
     return
 
 
