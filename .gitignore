@@ -1,12 +1,18 @@
 # Ignore byte-compiled files
 __pycache__/
 
-# Ignore Master sub-directory or zip
-Masters/
-Masters.zip
+# Ignore local vscode settings
+.vscode/
 
 # Ignore test data
 test_data/
 
+# Ignore any 'Masters' entries
+Masters/
+Masters.zip
+
 # Ignore backup files
 *_backup*
+
+# Ignore Jupyter notebook files
+*.ipynb

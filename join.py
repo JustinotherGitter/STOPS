@@ -1,31 +1,31 @@
+"""Module for joining the split FITS files with an external wavelength solution."""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Module for joining the split FITS files with an external wavelength solution."""
-
-__author__ = "Justin Cooper"
-__email__ = "justin.jb78+Masters@gmail.com"
+from __init__ import __author__, __email__, __version__
 
 # MARK: Imports
 import os
 import sys
 import logging
 import re
+from pathlib import Path
 
 import numpy as np
 from numpy.polynomial.chebyshev import chebgrid2d as chebgrid2d
 from numpy.polynomial.legendre import leggrid2d as leggrid2d
 from astropy.io import fits as pyfits
 
-# from lacosmic import lacosmic # ccdproc ~6x faster
+# from lacosmic import lacosmic # Deprecated: ccdproc is ~6x faster
 from ccdproc import cosmicray_lacosmic as lacosmic
 
 from utils.specpolpy3 import read_wollaston, split_sci
-from utils.SharedUtils import get_files, get_arc
-from utils.Constants import DATADIR, SAVE_PREFIX, CR_PARAMS
+from utils.SharedUtils import find_files, find_arc
+from utils.Constants import DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
 
 
-# MARK: Join Docstring
+# MARK: Join Class
 class Join:
     """
     The `Join` class allows for the joining of previously 
@@ -108,9 +108,10 @@ class Join:
     
     Notes
     -----
-    Constants set are:
+    Constants Imported (See utils.Constants):
         DATADIR
         SAVE_PREFIX
+        SPLIT_ROW
         CR_PARAMS
 
     Custom wavelength solutions must be formatted as:
@@ -132,23 +133,23 @@ class Join:
     # MARK: Join init
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path,
         database: str = "database",
         fits_list: list[str] = None,
-        solutions_list: list[str] = None,
-        split_row: int = 517,
+        solutions_list: list[Path] = None,
+        split_row: int = SPLIT_ROW,
         no_arc: bool = True,
         save_prefix=None,
         verbose: int = 30,
         **kwargs,
     ) -> None:
         self.data_dir = data_dir
-        self.database = database
-        self.fits_list = get_files(
+        self.database = Path(data_dir) / database
+        self.fits_list = find_files(
             data_dir=self.data_dir,
             filenames=fits_list,
             prefix="mxgbp",
-            extention="fits",
+            ext="fits",
         )
         self.fc_files, self.custom = self.get_solutions(solutions_list)
         self.split_row = split_row
@@ -157,7 +158,7 @@ class Join:
             self.save_prefix = save_prefix
 
         self.no_arc = no_arc
-        self.arc = get_arc(self.fits_list)
+        self.arc = find_arc(self.fits_list)
 
         self.verbose = verbose < 30
         return
@@ -191,12 +192,8 @@ class Join:
         if not wavlist:
             # Handle finding solutions
             ws = []
-            for fl in os.listdir(
-                os.path.join(self.data_dir, self.database)
-            ):
-                if os.path.isfile(
-                    os.path.join(self.data_dir, self.database, fl)
-                ) and (prefix == fl[0:2]):
+            for fl in os.listdir(self.database):
+                if os.path.isfile(self.database / fl) and (prefix == fl[0:len(prefix)]):
                     ws.append(fl)
 
             if len(ws) != 2:
@@ -204,7 +201,7 @@ class Join:
                 msg = (
                     f"Incorrect amount of wavelength solutions "
                     f"({len(ws)} fc... files) found in the solution "
-                    f"dir.: {os.path.join(self.data_dir, self.database)}"
+                    f"dir.: {self.database}"
                 )
                 logging.error(msg)
                 raise FileNotFoundError(msg)
@@ -214,7 +211,7 @@ class Join:
         # Custom solution
         if len(wavlist) >= 2:
             if len(wavlist) > 2:
-                logging.warn(f" Too many solutions: {wavlist}")
+                logging.warning(f" Too many solutions, only {wavlist[:2]} are considered")
                 wavlist = wavlist[:2]
 
             for fl in wavlist:
@@ -276,7 +273,7 @@ class Join:
         else:
             # Parse IRAF fc database files
             file_contents = []
-            with open(self.database + "/" + fc_file) as fcfile:
+            with open(self.database / fc_file) as fcfile:
                 for i in fcfile:
                     file_contents.append(re.sub(r"[\n\t\s]*", "", i))
 
@@ -522,10 +519,9 @@ class Join:
         o_y = 0
         e_y = 0
 
-        with pyfits.open(o_file) as o:
+        with pyfits.open(o_file) as o, \
+             pyfits.open(e_file) as e:
             o_y = o[0].data.shape[0]
-
-        with pyfits.open(e_file) as e:
             e_y = e[0].data.shape[0]
 
         if hdu["SCI"].data.shape[0] != (o_y + e_y):

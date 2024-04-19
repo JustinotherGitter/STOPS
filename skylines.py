@@ -1,41 +1,42 @@
+"""Module for analyzing the sky lines of a wavelength calibrated image."""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Justin Cooper"
-__email__ = "justin.jb78+Masters@gmail.com"
+from __init__ import __author__, __email__, __version__
 
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from scipy import signal
 
+from utils.SharedUtils import find_files
+
 # plt.rcParams['figure.figsize'] = (20, 4)
 plt.rcParams['image.origin'] = 'lower'
 
 
 class Skylines:
-    """
-        Skylines class takes a 
-
-        Parameters
-        ----------
-
-        
-        Returns
-        -------
-
-
-        Raises
-        ------
-
-    """
-    def __init__(self,
-                 in1 : str,
-                 ) -> None:
-        self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(in1)
+    def __init__(
+        self,
+        data_dir: Path,
+        filenames : list[str],
+        **kwargs,
+    ) -> None:
+        self.data_dir = data_dir
+        self.fits_list = find_files(
+            data_dir=self.data_dir,
+            filenames=filenames,
+            prefix="t", # t[o|e]beam
+            ext="fits",
+        )
+        self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(
+            self.fits_list
+        )
         self.corrWav, self.corrSpec = self.transform(
             self.rawWav,
             self.rawSpec

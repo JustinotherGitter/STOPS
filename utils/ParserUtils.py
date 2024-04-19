@@ -1,107 +1,82 @@
+"""Utility functions for the Parser"""
+
 # MARK: Imports
 import os
-from pathlib import Path
 import logging
+from pathlib import Path
 
 
-def parse_path(path: str) -> os.PathLike:
-    # MARK: Parse Path
-
-    pathlike = ""
-
-    # Parse 'quick' path
-    if path in ["", "."]:
-        return Path(os.getcwd())
-    
-    # Parse 'relative' path
-    npath = Path(path).expanduser().resolve()
-    pathlike = npath if npath.is_dir() else ""
-
-    # Validate path
-    if pathlike != "":
-        os.chdir(pathlike)
-        return pathlike
+# MARK: Parse Path
+def parse_path(path: str) -> Path:
+    path = Path(path).expanduser().resolve()
+    if path.is_dir():
+        os.chdir(path)
+        return path
 
     # Raise Directory not found error
-    msg = (
-        f"The given directory, {path}, does not resolve to a valid "
-        "directory."
-    )
-    logging.error(msg)
-    raise FileNotFoundError(msg)
+    msg = f" The directory path `{path}` is not valid."
+    raise NotADirectoryError(msg)
 
 
-def parse_file(file: str) -> os.PathLike:
-    # MARK: Parse File
+# MARK: Parse File
+def parse_file(filename: str) -> Path:
+    filename = Path(filename).expanduser().resolve()
+    if filename.is_file():
+        return filename
 
-    filelike = ""
-
-    # Parse 'relative' file path
-    nfile = Path(file).expanduser().resolve()
-    filelike = nfile if nfile.is_file() else ""
-
-    # Validate file path
-    if filelike != "":
-        return filelike
-    
     # Raise File not found error
-    msg = (
-        f"The given filename, {file}, does not resolve to a valid "
-        "file."
-    )
-    logging.error(msg)
+    msg = f" The filename `{filename}` is not valid."
     raise FileNotFoundError(msg)
 
 
-def parse_corr_file(filename: str) -> os.PathLike:
-    # MARK: Parse Correlation File
-
+# MARK: Parse Correlation File
+def parse_corr_file(filename: str) -> Path:
     filelike = Path(filename)
     filelist = Path(filelike.parent).glob(filelike.name)
-    filelist = list(sorted(filelist))
+    filelist = sorted(filelist)
 
-    if len(filelist) == 0:
-        raise FileNotFoundError(f"No file, {filename}, found.")
+    if not filelist:
+        errMsg = f"No file, {filename}, found."
+        raise FileNotFoundError(errMsg)
 
     return filelist
 
 
-def parse_coeff_file(file:str) -> os.PathLike | list[os.PathLike]:
-    # MARK: Parse Surface Function File
-
+# MARK: Parse Surface Function File
+def parse_coeff_file(filename: str) -> list[Path]:
     try:
-        return parse_file(file)
+        return [parse_file(filename)]
+
     except:
-        return list(sorted(Path().glob(file)))
+        return list(sorted(Path().glob(filename)))
 
 
+# MARK: Parse Logging Level
 def parse_loglevel(loglevel: int) -> int:
-    # MARK: Parse Logging Level
-
     # Set order of desired -v -> -vvv logging
     loglist = [logging.WARNING, logging.INFO, logging.DEBUG]
-    # Return desired level
-    return loglist[max(0, min(loglevel, 2))]
+
+    return loglist[max(0, min(loglevel, len(loglist) - 1))]
 
 
+# MARK: Parse Logging File
+# lambda name: '' if name is None else '.'.join([*[i.upper() for i in name.split('.')[:-1 if name.endswith('log') else len(name.split('.'))]], 'log'])
 def parse_logfile(logfile: str) -> str | None:
-    # MARK: Parse Logging File
-
     # Handle no logfile
     if logfile in [None, ""]:
         return ""
-    
+
     # Return valid 'LOGFILE.log'
-    fname = logfile.upper()
-    if fname[-4:] == ".LOG":
+    logfile = logfile.upper()
+    if logfile.endswith(".LOG"):
         fname = fname[:-4]
     fname += ".log"
 
     return fname
 
 
-def flatten(filelist: list) -> list[os.PathLike]:
-    # MARK: Flatten
+# MARK: Flatten
+def flatten(filelist: list) -> list[Path]:
     flatlist = []
 
     for item in filelist:

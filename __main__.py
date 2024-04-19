@@ -1,24 +1,23 @@
+"""Argument parser for STOPS."""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Argument parser for STOPS."""
-
-__version__ = "2024.04.13"
-__author__ = "Justin Cooper"
-__email__ = "justin.jb78+Masters@gmail.com"
+from __init__ import __version__, __author__, __email__
 
 # MARK: Imports
 import os
+import sys
 import argparse
 import logging
 
-import split
-import join
-import cross_correlate
-import skylines
+from split import Split
+from join import Join
+from cross_correlate import CrossCorrelate
+from skylines import Skylines
 
 from utils import ParserUtils as pu
-from utils.Constants import SPLIT_ROW, PREFIX
+from utils.Constants import SPLIT_ROW, PREFIX, PARSE, CORR_SAVENAME
 
 # MARK: Constants
 PROG = "STOPS"
@@ -49,7 +48,7 @@ parser.add_argument(
     "-v",
     "--verbose",
     action="count",
-    default=0,
+    default=PARSE['VERBOSE'],
     help=(
         "Counter flag which enables and increases verbosity. "
         "Use -v or -vv for greater verbosity levels."
@@ -61,7 +60,7 @@ parser.add_argument(
     action="store",
     type=pu.parse_logfile,
     help=(
-        "Filename to which logging is saved to. "
+        "Filename of the logging file. "
         "File is created if it does not exist. Defaults to None."
     ),
 )
@@ -69,11 +68,11 @@ parser.add_argument(
     "data_dir",
     action="store",
     nargs="?",
-    default=os.getcwd(),
+    default=PARSE['DATA_DIR'],
     type=pu.parse_path,
     help=(
         "Path of the directory which contains the working data. "
-        f"Defaults to the cwd -> `{os.getcwd()}' (I.E. `.')."
+        f"Defaults to the cwd -> `{PARSE['DATA_DIR']}` (I.E. '.')."
     ),
 )
 
@@ -127,7 +126,7 @@ split_parser = subparsers.add_parser(
 # Change defaults here
 split_parser.set_defaults(
     mode="split",
-    func=split.Split,
+    func=Split,
 )
 
 
@@ -148,13 +147,13 @@ join_parser.add_argument(
     help=(
         "Custom coefficients to use instead of the `IRAF` fitcoords "
         "database. Use as either '-c <o_solution> <e_solution>' or "
-        "a regex descriptor '-c <*_solution*extention>'."
+        "a regex descriptor '-c <*solution*extention>'."
     ),
 )
 # Change defaults here
 join_parser.set_defaults(
     mode="join",
-    func=join.Join,
+    func=Join,
 )
 
 
@@ -168,7 +167,6 @@ corr_parser = subparsers.add_parser(
 corr_parser.add_argument(
     "filenames",
     action="store",
-    # dest="fits_list",
     nargs="+",
     type=pu.parse_corr_file,
     help=(
@@ -191,7 +189,7 @@ corr_parser.add_argument(
     "-c",
     "--continuum_order",
     type=int,
-    default=11,
+    default=PARSE['CONT_ORD'],
     dest="cont_ord",
     help=(
         "Order of continuum to remove from spectra. "
@@ -210,28 +208,35 @@ corr_parser.add_argument(
     ),
 )
 corr_parser.add_argument(
-    "-o",
-    "--offset",
-    type=int,
-    default=0,
+    "-s",
+    "--save_name",
+    action="store",
+    nargs="?",
+    const="",
     help=(
-        "Introduces an offset when correcting for "
-        "known offset in spectra or for testing purposes. "
-        "(For testing, not used during regular operation.)"
+        "Flag and name with which to save the output plot. "
+        "If not invoked, plot will not be saved. "
+        "If invoked with no arguments '-s', "
+        f"plot is saved as {CORR_SAVENAME}. "
+        f"If invoked with a path '-s name, 'name' will be used."
     ),
 )
 corr_parser.add_argument(
-    "-s",
-    "--save_name",
+    "-o",
+    "--offset",
+    type=int,
+    default=PARSE['OFFSET'],
     help=(
-        "Name with which to save the output plot. "
-        "If left undefined, plot will not be saved."
+        "Introduces an offset when correcting for "
+        "known offset in spectra or for testing purposes. "
+        f"Defaults to {PARSE['OFFSET']}. "
+        "(For testing, not used during regular operation.)"
     ),
 )
 # Change defaults here
 corr_parser.set_defaults(
     mode="correlate",
-    func=cross_correlate.CrossCorrelate,
+    func=CrossCorrelate,
 )
 
 
@@ -258,7 +263,6 @@ sky_parser.add_argument(
     "--save_prefix",
     action="store",
     nargs="?",
-    # default=None,
     const="sky",
     help=(
         "Prefix used when saving plot. "
@@ -272,7 +276,7 @@ sky_parser.add_argument(
     "--beams",
     choices=["o", "e", "oe"],
     type=str.lower,
-    default="both",
+    default=PARSE['BEAMS'],
     help=(
         "Beam(s) for skyline checking. "
         "Defaults to both beams overplotted, but "
@@ -293,18 +297,26 @@ sky_parser.add_argument(
 )
 sky_parser.set_defaults(
     mode="skyline",
-    func=skylines.Skylines,
+    func=Skylines,
 )
 
 
 # MARK: Keyword Clean Up
 args = parser.parse_args()
+
+if len(sys.argv) == 1:
+    parser.print_help(sys.stderr)
+    sys.exit(2)
+
 args.verbose = pu.parse_loglevel(args.verbose)
+
 if 'log' in args and args.log not in ["", None]:
     args.log = args.data_dir / args.log
+
 if "filenames" in args:
     args.filenames = pu.flatten(args.filenames)
-if "solutions_list" in args:
+
+if "solutions_list" in args and type(args.solutions_list) == list:
     args.solutions_list = pu.flatten(args.solutions_list)
 
 # MARK: Begin logging
@@ -314,7 +326,6 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     level=args.verbose,
 )
-
 
 # MARK: Call Relevant Class(Args)
 logging.debug(f"Argparse namespace: {args}")

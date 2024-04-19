@@ -1,13 +1,16 @@
+"""Module for cross correlating polarization beams."""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Justin Cooper"
-__email__ = "justin.jb78+Masters@gmail.com"
+from __init__ import __author__, __email__, __version__
 
+# MARK: Imports
 import os
 import sys
 import logging
 import itertools as iters
+from pathlib import Path
 
 import numpy as np
 from numpy.polynomial import chebyshev
@@ -15,16 +18,10 @@ import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from scipy import signal
 
-from utils import SharedUtils as su
+from utils.SharedUtils import find_files, continuum
+from utils.Constants import CORR_SAVENAME
 
-# TODO@JustinotherGitter: Update correlate to use [filenames] instead of in1/in2
-# TODO@JustinotherGitter: Update correlate to use relevant args:
-    # filename <- in1/in2,
-    # continuum_order <- cont,
-    # continuum_plot <- cont_plot
-# TODO@JustinotherGitter: Implement own logging in main()
-
-
+# MARK: Correlate class
 class CrossCorrelate:
     """
     Cross correlate allows for comparing the extensions of multiple
@@ -32,32 +29,40 @@ class CrossCorrelate:
 
     Parameters
     ----------
-    in1 : str
-        The first ecwmxgbp*.fits file to be cross correlated
-    in2 : str, optional
-        The second ecwmxgbp*.fits file to be cross correlated.
-        Cross correlation against the two extensions occurs if left empty
-        (The default is None)
+    data_dir : str
+        The path to the data to be cross correlated
+    filenames : list[str]
+        The ecwmxgbp*.fits files to be cross correlated.
+        If only one filename is defined, correlation is done against the two polarization beams.
     split_ccd : bool, optional
         Decides whether the CCD regions should each be individually cross correlated.
         (The default is True, which splits the spectrum up into its seperate CCD regions)
-    cont : int, optional
+    cont_ord : int, optional
         The degree of a chebyshev to fit to the continuum.
         (The default is 11)
     cont_plot : bool, optional
         Decides whether or not the continuum fitting should be plotted
         (The default is False, so no continua plots are displayed)
-    offset : int, optional
-        The amount the spectrum is shifted, mainly to test the effect of the cross correlation
-        (The default is 0, I.E. no offset introduced)
     save_name : str, optional
         The name or directory to save the figure produced to.
         "." saves a default name to the current working. A default name is also used when save_name is a directory.
         (The default is None, I.E. The figure is not saved, only displayed)
 
-    Returns
+    Attributes
+    ----------
+    
+    
+    Methods
     -------
-    None
+
+    
+    Other Parameters
+    ----------------
+    offset : int, optional
+        The amount the spectrum is shifted, mainly to test the effect of the cross correlation
+        (The default is 0, I.E. no offset introduced)
+    **kwargs : dict
+        keyword arguments. Allows for passing unpacked dictionary to the class constructor.
 
     See Also
     --------
@@ -68,36 +73,49 @@ class CrossCorrelate:
 
     def __init__(
         self,
-        data_dir: os.PathLike,
-        fits_list: list[os.PathLike],
+        data_dir: Path,
+        filenames: list[str],
         split_ccd: bool = True,
-        cont: int = 11,
+        cont_ord: int = 11,
         cont_plot: bool = False,
         offset: int = 0,
         save_name: str = None,
         **kwargs
     ) -> None:
-        # Defined when passed in
+        # Defined from parameters
         self.data_dir = data_dir
-        self.fits_list = fits_list
-        self.split_ccd = split_ccd
-        self.cont = cont
+        self.fits_list = find_files(
+            data_dir=self.data_dir,
+            filenames=filenames,
+            prefix="ecwmxgbp",
+            ext="fits",
+        )
+        self.ccds = 1
+        # self.spec, self.wav, self.bpm = self.
+        if split_ccd:
+            # Assumed BPM has a value of 2 near the center of each CCD (i.e. sum(bpm == 2) = count(ccd))
+            self.ccds = sum(self.bpm1[0] == 2)
+            self.splitCCD()
+
+        # Defined when processed
+        # shape of [o,e | o1, o2][ccd][wav.]
+        self.spec = None
+        self.wav = None
+        self.bpm = None
+
+        self.cont_ord = cont_ord
         self.cont_plot = cont_plot
         self.offset = offset
         self.save_name = save_name
 
-        # Defined when processed
-        self.spec = None # spec1, spec2
-        self.wav = None # wav1, wav2
-        self.bpm = None # bpm1, bpm2
 
         self.exts = 0
         self.ccds = 1
         self.bounds = None # bounds1, bounds2
 
+        self.wavUnits = "$\AA$"
 
         # self.invert = False
-        # self.wavUnits = "$\AA$"
         # self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
         # self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
 
@@ -109,9 +127,7 @@ class CrossCorrelate:
 
             # Bounds shape [extensions, ccds, lower / upper bound]
             self.bounds = self.setBounds()
-
-            if split_ccd:
-                self.splitCCD()
+                
 
         # self.bounds.append(np.array(
         #     [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
@@ -130,11 +146,8 @@ class CrossCorrelate:
         # self.bounds2 = np.array(
         #     [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
         # )
-        if split_ccd:
-            self.splitCCD()
 
-        self.cont = cont
-        if cont > 0:
+        if cont_ord > 0:
             self.rmvCont(cont_plot)
 
         # Add an offset to the spectra to test cross correlation
@@ -145,17 +158,15 @@ class CrossCorrelate:
         self.corrdb = []
         self.lagsdb = []
         # self.correlate()
-
-        self.save_name = save_name
         # self.checkPlot()
 
         return
     
-    def loadFile(self, filename: os.PathLike) -> tuple[list, list, list]:
+    def loadFile(self, filename: Path) -> tuple[list, list, list]:
         spec, wav, bpm = None, None, None
 
         # Open HDU
-        with pyfits.open(self.data_dir / self.filename) as hdu:
+        with pyfits.open(self.data_dir / filename) as hdu:
             #Load spec, wav, and bpm data - indexing [wav, intensity, beam]
             spec = hdu["SCI"].data.sum(axis=1)
             wav  = (
@@ -167,7 +178,7 @@ class CrossCorrelate:
             if "Angstroms" not in hdu["SCI"].header["CTYPE1"]:
                 self.wavUnits = hdu["SCI"].header["CTYPE1"]
 
-        # TODO@JustinotherGitter: Recheck return of o and e beams.
+        
         return ([spec, spec[::-1]], [wav, wav], [bpm, bpm[::-1]])
 
     def setBounds(self) -> list[np.ndarray, np.ndarray]:
@@ -209,9 +220,6 @@ class CrossCorrelate:
     #     return (wav, spec[::-1], bpm[::-1]) if self.invert else (wav, spec, bpm)
 
     def splitCCD(self) -> None:
-        # Assumed BPM has a value of 2 near the center of each CCD (i.e. sum(bpm == 2) = count(ccd))
-        self.ccds = sum(self.bpm1[0] == 2)
-        
         # update bounds to reflect ccds
         self.bounds1 = np.zeros([self.exts, self.ccds, 2], dtype=int)
         self.bounds2 = np.zeros([self.exts, self.ccds, 2], dtype=int)
@@ -247,16 +255,16 @@ class CrossCorrelate:
             okwav2 = np.where(self.bpm2[ext][ccdBound2] != 1)
 
             # Define continua
-            ctm1 = su.continuum(
+            ctm1 = continuum(
                 self.wav1[ccdBound1][okwav1],
                 self.spec1[ext][ccdBound1][okwav1],
-                deg=self.cont,
+                deg=self.cont_ord,
                 plot=plotCont,
             )
-            ctm2 = su.continuum(
+            ctm2 = continuum(
                 self.wav2[ccdBound2][okwav2],
                 self.spec2[ext][ccdBound2][okwav2],
-                deg=self.cont,
+                deg=self.cont_ord,
                 plot=plotCont,
             )
 
@@ -298,7 +306,7 @@ class CrossCorrelate:
 
         return
 
-    def checkPlot(self, default_name: str = "OEcorr.pdf") -> None:
+    def checkPlot(self, default_name: str = CORR_SAVENAME) -> None:
         # Plot
         fig, axs = plt.subplots(3, 3, sharey="row")
 
@@ -338,7 +346,7 @@ class CrossCorrelate:
         plt.show()
 
         # Handle do not save
-        if self.save_name == None:
+        if not self.save_name:
             return
 
         # Handle lazy save_name
@@ -372,7 +380,7 @@ class CrossCorrelate:
         return
 
 
-def main(argv) -> None: # TODO@JustinotherGitter: Handle cross_correlate.py called directly
+def main(argv) -> None:
     return
 
 if __name__ == "__main__":

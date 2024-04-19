@@ -1,12 +1,6 @@
-# Look at all TODO comments.
-* Move all TODO comments here
-* Handle direct call in main()
-* Add verbosity logging statements (check log to logfile)
-* Complete `NumPy styled` docstrings
-
-## __main__.py
-  * Add plot return options? [open | open and save to file | file]
+# \_\_main\_\_.py
   * Add type of file check (I.E. FITS)
+  * Add plot return options? [open | open and save to file | file]
 
 ```mermaid
   graph LR;
@@ -29,7 +23,8 @@
     B -.-> A
 ```
 
-## split.py
+
+# split.py
   * self.split_row → Check valid split row at assignment
   * self.save_prefix → Check valid dict at assignment
 
@@ -52,60 +47,77 @@
 
 ```
 
-## join.py
+
+# join.py
   * self.split_row → Check valid split row at assignment
   * self.save_prefix → Check valid dict at assignment
 
 ```mermaid
-classDiagram
-  class Join {
-    str data_dir
-    str database = "database"
-    list[str] fits_list = None
-    list[str] | None fc_files = None
-    bool custom = `fc_files != None`
-    int split_row = 517
-    dict save_prefix = None
-    bool no_arc = True
-    str arc = None
-    int verbose = `False`
+  classDiagram
+    class Join {
+      str data_dir
+      str database = "database"
+      list[str] fits_list = None
+      list[str] | None fc_files = None
+      bool custom = `fc_files != None`
+      int split_row = 517
+      dict save_prefix = None
+      bool no_arc = True
+      str arc = None
+      int verbose = `False`
 
-    + get_solutions(wavlist: list | None, prefix: str = "fc") tuple[list[str], bool]
-    + parse_solution(fc_file, x_shape, y_shape) tuple[dict[str, int], np.ndarray]
-    + join_file(file: os.PathLike) None
-    + check_crop(hdu, o_file, e_file) int
-    + process() None
-  }
+      + get_solutions(wavlist: list | None, prefix: str = "fc") tuple[list[str], bool]
+      + parse_solution(fc_file, x_shape, y_shape) tuple[dict[str, int], np.ndarray]
+      + join_file(file: os.PathLike) None
+      + check_crop(hdu, o_file, e_file) int
+      + process() None
+    }
 ```
 
-## correlate.py
-  *
 
-## skylines.py
-  *
+# correlate.py
+  * Update correlate (fits_list ← in1/in2), (cont_ord ← cont)
+  * LoadFile: Recheck return of o and e beams.
+  * Complete correlate
+
+
+# skylines.py
+  * Complete skylines
 
 
 # Using general python project structure
-  * make sure implemented throughout
-  * create dependencies.txt
-  * create Makefile to clear up installation
-  * update docs to reflect updated structure
+  * Handle direct calls in main()?
+  * Create Makefile to clear up installation
+  * Create license (CC BY-SA 4.0 international(?))
+    * https://github.com/santisoler/cc-licenses
+    * https://creativecommons.org/licenses/by-sa/4.0/deed.en
+    * check NC, etc.
 
-  * refer to:
+  * Refer to:
       * https://docs.python-guide.org/writing/structure/
 
-# Using NumPy docstring formatting as well as type hinting
-  * make sure implemented throughout
-  * make sure type hinting using correct types (I.E. find type for fits files and implement)
 
-  * refer to:
+# Using NumPy docstrings / type hinting
+  * Make sure implemented throughout
+  * Make sure type hinting using correct types
+
+  * Refer to:
       * https://numpydoc.readthedocs.io/en/latest/format.html
       * https://docs.python.org/3/library/typing.html
 
-# Implement logging
-  * make sure implemented throughout
-  * decide on log structure (I.E. [Datetime] Function called and returned {output} / raised FileNotFound error)
 
-  * refer to:
+# Implement logging
+  * Make sure implemented throughout
+  * Add verbosity logging statements
+
+  * Refer to:
       * https://realpython.com/python-logging/
-  
+
+
+# Testing
+  * Add tests for \_\_main\_\_
+  * Add tests for each module
+  * Add tests for utils
+
+  * Refer to:
+      * https://docs.python-guide.org/writing/tests/

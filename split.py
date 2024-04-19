@@ -1,23 +1,22 @@
+"""Module for splitting ``polsalt`` FITS files."""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Module for splitting ``polsalt`` FITS files."""
-
-__author__ = "Justin Cooper"
-__email__ = "justin.jb78+Masters@gmail.com"
+from __init__ import __author__, __email__, __version__
 
 # MARK: Imports
-
 import os
 import sys
 import logging
 from copy import deepcopy
+from pathlib import Path
 
 import numpy as np
 from astropy.io import fits as pyfits
 
-from utils.SharedUtils import get_files, get_arc
-from utils.Constants import SAVE_PREFIX, CROP_DEFAULT
+from utils.SharedUtils import find_files, find_arc
+from utils.Constants import SAVE_PREFIX, CROP_DEFAULT, SPLIT_ROW
 
 
 # MARK: Split Class
@@ -36,7 +35,7 @@ class Split:
         (The default is None, `Split` will search for `mxgbp*.fits` files)
     split_row : int, optional
         The row along which to split the data of each extension in the FITS file.
-        (The default is 517, the SALT RSS CCD's middle row)
+        (The default is SPLIT_ROW (See Notes), the SALT RSS CCD's middle row)
     no_arc : bool, optional
         Decides whether the arc frames should be recombined.
         (The default is False, `polsalt` has no use for the arc after wavelength calibrations)
@@ -89,34 +88,35 @@ class Split:
 
     Notes
     -----
-    Constants set are:
-        SAVE_PREFIX = {'beam': ["obeam", "ebeam"], 'arc': ["oarc", "earc"]}
-        CROP_DEFAULT = 40
+    Constants Imported (See utils.Constants):
+        SAVE_PREFIX
+        CROP_DEFAULT
+        SPLIT_ROW
     
     """
     # MARK: Split init
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path,
         fits_list: list[str] = None,
-        split_row: int = 517,
+        split_row: int = SPLIT_ROW,
         no_arc: bool = False,
         save_prefix=None,
         **kwargs
     ) -> None:
         self.data_dir = data_dir
-        self.fits_list = get_files(
+        self.fits_list = find_files(
             data_dir=data_dir,
             filenames=fits_list,
             prefix="mxgbp",
-            extention="fits"
+            ext="fits"
         )
         self.split_row = split_row
         self.save_prefix = SAVE_PREFIX
         if type(save_prefix) == dict:
             self.save_prefix = save_prefix
 
-        self.arc = get_arc(self.fits_list, no_arc)
+        self.arc = "" if no_arc else find_arc(self.fits_list)
         self.o_files = []
         self.e_files = []
 
@@ -281,13 +281,11 @@ class Split:
 
     # MARK: Save beam lists
     def save_beam_lists(self, file_suffix: str = 'frames') -> None:
-        with open(f"o_{file_suffix}", "w+") as f_o:
-            for i in self.o_files:
+        with open(f"o_{file_suffix}", "w+") as f_o, \
+             open(f"e_{file_suffix}", "w+") as f_e:
+            for i, j in zip(self.o_files, self.e_files):
                 f_o.write(i + "\n")
-
-        with open(f"e_{file_suffix}", "w+") as f_e:
-            for i in self.e_files:
-                f_e.write(i + "\n")
+                f_e.write(j + "\n")
 
         return
 
