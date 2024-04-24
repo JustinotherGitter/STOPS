@@ -7,6 +7,7 @@ from __init__ import __author__, __email__, __version__
 
 import os
 import sys
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -43,6 +44,9 @@ class Skylines:
         )
         self.spec = np.median(self.corrSpec, axis=1)
         self.normSpec = self.rmvCont(self.spec)
+
+        logging.debug(self.__dict__)
+        return
 
     def checkLoad(self, path1 : str) -> np.ndarray:
         # If the path is invalid

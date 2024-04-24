@@ -161,6 +161,8 @@ class Join:
         self.arc = find_arc(self.fits_list)
 
         self.verbose = verbose < 30
+
+        logging.debug(self.__dict__)
         return
 
     # MARK: Find 2D WAV Functions

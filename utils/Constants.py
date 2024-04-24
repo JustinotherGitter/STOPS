@@ -4,24 +4,34 @@
 import os
 
 # MARK: Constants
-# Directory to `polsalt` calibration data,
-# specifically the wollaston correction calibration data
-DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
 
-SPLIT_ROW = 517  # Half of the CCD pixel `Height`
-CROP_DEFAULT = 40  # Best crop from usage, PG0300 with Ar arc lamp
+# Half of the CCD pixel `Height`
+SPLIT_ROW = 517
 
 # Naming convention for FITS prefixes, Note order: O first, E second. Always.
 PREFIX = ["obeam", "ebeam"]
 SAVE_PREFIX = {"beam": PREFIX, "arc": ["oarc", "earc"]}
+SAVE_CORR = "corr"
+SAVE_SKY = "sky"
+
+# Directory to `polsalt` calibration data,
+# specifically the wollaston correction calibration data
+DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
+
+# Default directory when running STOPS with no data_dir provided
+DEFAULT_DIR = os.getcwd()
+
+# Best crop from usage, PG0300 with Ar arc lamp
+CROP_DEFAULT = 40
+
 
 # Parser defaults
 PARSE = {
     "VERBOSE": 0,  # 0, 1, 2 see ParserUtils.parse_loglevel
-    "DATA_DIR": os.getcwd(),
+    "DATA_DIR": DEFAULT_DIR,
     "CONT_ORD": 11,
     "OFFSET": 0,
-    "BEAMS": "oe",  # 'o', 'e', 'oe'
+    "BEAMS": "OE",  # 'O', 'E', 'OE'
 }
 
 # CR Cleaning parameters
@@ -39,4 +49,3 @@ CR_PARAMS = {
     "BACKGROUND": None,
 }
 
-CORR_SAVENAME = "OEcorr.pdf"

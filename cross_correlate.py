@@ -19,7 +19,7 @@ from astropy.io import fits as pyfits
 from scipy import signal
 
 from utils.SharedUtils import find_files, continuum
-from utils.Constants import CORR_SAVENAME
+from utils.Constants import SAVE_CORR
 
 # MARK: Correlate class
 class CrossCorrelate:
@@ -75,14 +75,14 @@ class CrossCorrelate:
         self,
         data_dir: Path,
         filenames: list[str],
+        beams: str = "OE",
         split_ccd: bool = True,
         cont_ord: int = 11,
         cont_plot: bool = False,
         offset: int = 0,
-        save_name: str = None,
+        save_prefix: Path | None = None,
         **kwargs
     ) -> None:
-        # Defined from parameters
         self.data_dir = data_dir
         self.fits_list = find_files(
             data_dir=self.data_dir,
@@ -90,223 +90,173 @@ class CrossCorrelate:
             prefix="ecwmxgbp",
             ext="fits",
         )
+        self.beams = beams
         self.ccds = 1
-        # self.spec, self.wav, self.bpm = self.
         if split_ccd:
-            # Assumed BPM has a value of 2 near the center of each CCD (i.e. sum(bpm == 2) = count(ccd))
-            self.ccds = sum(self.bpm1[0] == 2)
-            self.splitCCD()
-
-        # Defined when processed
-        # shape of [o,e | o1, o2][ccd][wav.]
-        self.spec = None
-        self.wav = None
-        self.bpm = None
+            # BPM == 2 near center of CCD if CCD count varies
+            with pyfits.open(self.fits_list[0]) as hdu:
+                self.ccds = sum(hdu["BPM"].data.sum(axis=1)[0] == 2)
 
         self.cont_ord = cont_ord
         self.cont_plot = cont_plot
         self.offset = offset
-        self.save_name = save_name
+        if offset != 0:
+            logging.warning("'offset' is only for testing.")
+        # # Add an offset to the spectra to test cross correlation
+        # self.spec1 = np.insert(
+        #     self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
+        # )[:, : self.spec1.shape[-1]]
 
+        self.save_name = save_prefix
+        # Handle directory save name
+        if not self.save_name and self.save_name.is_dir():
+            self.save_name /= SAVE_CORR
+            logging.warning((
+                f"Correlation save name resolves to a directory. "
+                f"Saving under {self.save_name}"
+                ))
 
-        self.exts = 0
-        self.ccds = 1
-        self.bounds = None # bounds1, bounds2
+        self.unit_wav = "$\AA$"
 
-        self.wavUnits = "$\AA$"
-
-        # self.invert = False
-        # self.wav1, self.spec1, self.bpm1 = self.checkLoad(in1)
-        # self.wav2, self.spec2, self.bpm2 = self.checkLoad(in2, in1)
-
-        # Move to process
-        for target in self.fits_list:
-            self.spec, self.wav, self.bpm = self.loadFile(target)
-
-            self.exts = self.spec[0].shape[0]
-
-            # Bounds shape [extensions, ccds, lower / upper bound]
-            self.bounds = self.setBounds()
-                
-
-        # self.bounds.append(np.array(
-        #     [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
-        # ))
-        # self.bounds.append(np.array(
-        #     [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
-        # ))
-
-
-        # self.exts = self.spec1.shape[0]
-        # self.ccds = 1
-        # Bounds shape [extensions, ccds, lower / upper bound]
-        # self.bounds1 = np.array(
-        #     [[[0, self.spec1[0].shape[-1]]], [[0, self.spec1[1].shape[-1]]]], dtype=int
-        # )
-        # self.bounds2 = np.array(
-        #     [[[0, self.spec2[0].shape[-1]]], [[0, self.spec2[1].shape[-1]]]], dtype=int
-        # )
-
-        if cont_ord > 0:
-            self.rmvCont(cont_plot)
-
-        # Add an offset to the spectra to test cross correlation
-        self.spec1 = np.insert(
-            self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
-        )[:, : self.spec1.shape[-1]]
+        # self.bounds = None # bounds1, bounds2
+        # # In process:
+        # self.bounds = self.setBounds()
 
         self.corrdb = []
         self.lagsdb = []
-        # self.correlate()
-        # self.checkPlot()
 
+        logging.debug(self.__dict__)
         return
     
-    def loadFile(self, filename: Path) -> tuple[list, list, list]:
+    def load_file(
+        self,
+        filename: Path
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         spec, wav, bpm = None, None, None
 
         # Open HDU
-        with pyfits.open(self.data_dir / filename) as hdu:
-            #Load spec, wav, and bpm data - indexing [wav, intensity, beam]
-            spec = hdu["SCI"].data.sum(axis=1)
-            wav  = (
-                np.arange(spec.shape[-1]) * hdu["SCI"].header["CDELT1"] + hdu["SCI"].header["CRVAL1"]
+        with pyfits.open(filename) as hdul:
+            spec = hdul["SCI"].data.sum(axis=1)
+            wav = (
+                np.arange(spec.shape[-1])
+                * hdul["SCI"].header["CDELT1"]
+                + hdul["SCI"].header["CRVAL1"]
             )
-            bpm = hdu["BPM"].data.sum(axis=1)
+            bpm = hdul["BPM"].data.sum(axis=1)
 
-            # Check wavelength units unchanged
-            if "Angstroms" not in hdu["SCI"].header["CTYPE1"]:
-                self.wavUnits = hdu["SCI"].header["CTYPE1"]
+            if hdul["SCI"].header["CTYPE1"] != 'Angstroms':
+                self.wav_units = hdul["SCI"].header["CTYPE1"]
 
+        return spec, wav, bpm
+
+    def find_bounds(self, bpm: np.ndarray) -> np.ndarray:
+        """Find the bounds for a file based on the CCD count."""
+        # bounds.shape -> (O|E, CCD's, low.|up. bound)
+        if self.ccds == 1:
+            return np.array(
+                [[(0, bpm[0].shape[-1])], [(0, bpm[1].shape[-1])]]
+            ).astype(int)
         
-        return ([spec, spec[::-1]], [wav, wav], [bpm, bpm[::-1]])
-
-    def setBounds(self) -> list[np.ndarray, np.ndarray]:
-        bounds = []
-        bounds.append(np.array(
-            [[[0, self.spec[0].shape[-1]]], [[0, self.spec[1].shape[-1]]]], dtype=int
-        ))
-        bounds.append(np.array(
-            [[[0, self.spec[0].shape[-1]]], [[0, self.spec[1].shape[-1]]]], dtype=int
-        ))
-
-        return bounds
-    
-    # def checkLoad(self, path1: str, path2: str = None) -> np.ndarray:
-
-    #     # If the first path is invalid
-    #     if (path1 == None) or (not os.path.isfile(os.path.expanduser(path1))):
-    #         # And the second path is not defined, raise an error
-    #         if path2 == None:
-    #             raise FileNotFoundError(f"{path1} is invalid")
-
-    #         # Use the second path but swap the O and E beams
-    #         path1 = path2
-    #         self.invert = True
-
-    #     # Load data
-    #     with pyfits.open(os.path.expanduser(path1)) as hdu:
-    #         spec = hdu["SCI"].data.sum(axis=1)
-    #         wav = (
-    #             np.arange(spec.shape[-1]) * hdu["SCI"].header["CDELT1"]
-    #             + hdu["SCI"].header["CRVAL1"]
-    #         )
-    #         bpm = hdu["BPM"].data.sum(axis=1)
-
-    #         if "Angstroms" not in hdu["SCI"].header["CTYPE1"]:
-    #             self.wavUnits = hdu["SCI"].header["CTYPE1"]
-
-    #     # Return data and implement swap if necessary
-    #     return (wav, spec[::-1], bpm[::-1]) if self.invert else (wav, spec, bpm)
-
-    def splitCCD(self) -> None:
-        # update bounds to reflect ccds
-        self.bounds1 = np.zeros([self.exts, self.ccds, 2], dtype=int)
-        self.bounds2 = np.zeros([self.exts, self.ccds, 2], dtype=int)
+        bounds = np.zeros((2, self.ccds, 2))
 
         # Get lower and upper bound for each ccd, save to bounds
-        for ext, ccd in iters.product(range(self.exts), range(self.ccds)):
-            mid1 = np.where(self.bpm1[ext] == 2)[0][ccd]
-            mid2 = np.where(self.bpm2[ext] == 2)[0][ccd]
-
-            # Lower bound, min non-zero
-            lowb1 = max(mid1 - self.bpm1.shape[-1] // (self.ccds * 2), 0)
-            uppb1 = min(
-                mid1 + self.bpm1.shape[-1] // (self.ccds * 2), self.bpm1.shape[-1]
+        # Lower -> min is zero, Upper -> max is bpm length
+        for ext, ccd in iters.product(range(2), range(self.ccds)):
+            mid = np.where(bpm[ext] == 2)[0][ccd]
+            CCDs = self.ccds * 2
+            bounds[ext, ccd] = (
+                max(mid - bpm.shape[-1] // CCDs, 0),
+                min(mid + bpm.shape[-1] // CCDs, bpm.shape[-1])
             )
 
-            # Upper bound, max bpm length
-            lowb2 = max(mid2 - self.bpm2.shape[-1] // (self.ccds * 2), 0)
-            uppb2 = min(
-                mid2 + self.bpm2.shape[-1] // (self.ccds * 2), self.bpm2.shape[-1]
-            )
+        return bounds.astype(int)
 
-            self.bounds1[ext, ccd] = (lowb1, uppb1)
-            self.bounds2[ext, ccd] = (lowb2, uppb2)
-
-    def rmvCont(self, plotCont) -> None:
-        for ext, ccd in iters.product(range(self.exts), range(self.ccds)):
+    def remove_cont(
+        self,
+        spec: np.ndarray,
+        wav: np.ndarray,
+        bpm: np.ndarray,
+        bounds: np.ndarray,
+        plotCont: bool
+    ) -> None:
+        for ext, ccd in iters.product(range(2), range(self.ccds)):
             # Get the range for current extension, ccd combination
-            ccdBound1 = range(*self.bounds1[ext][ccd])
-            ccdBound2 = range(*self.bounds2[ext][ccd])
+            ccdBound = range(*bounds[ext][ccd])
 
             # Mask out the bad pixels for fitting continua
-            okwav1 = np.where(self.bpm1[ext][ccdBound1] != 1)
-            okwav2 = np.where(self.bpm2[ext][ccdBound2] != 1)
+            okwav = np.where(bpm[ext][ccdBound] != 1)
 
             # Define continua
-            ctm1 = continuum(
-                self.wav1[ccdBound1][okwav1],
-                self.spec1[ext][ccdBound1][okwav1],
-                deg=self.cont_ord,
-                plot=plotCont,
-            )
-            ctm2 = continuum(
-                self.wav2[ccdBound2][okwav2],
-                self.spec2[ext][ccdBound2][okwav2],
+            ctm = continuum(
+                wav[ccdBound][okwav],
+                spec[ext][ccdBound][okwav],
                 deg=self.cont_ord,
                 plot=plotCont,
             )
 
             # Normalise spectra
-            self.spec1[ext][ccdBound1] /= chebyshev.chebval(self.wav1[ccdBound1], ctm1)
-            self.spec1[ext][ccdBound1] -= 1
+            spec[ext][ccdBound] /= chebyshev.chebval(wav[ccdBound], ctm)
+            spec[ext][ccdBound] -= 1
 
-            self.spec2[ext][ccdBound2] /= chebyshev.chebval(self.wav2[ccdBound2], ctm2)
-            self.spec2[ext][ccdBound2] -= 1
+        return spec
 
+    def correlate(
+        self,
+        filename1: Path,
+        filename2: Path | None = None
+    ) -> None:
+        # (spec / wav / bpm).shape -> (2, 'CCDs', 'val.')
+        #  OE -> 'O1' and 'E1', O -> 'O1' and 'O2', E -> 'E1' and 'E2'
+        spec, wav, bpm = self.load_file(filename1)
+        if not filename2:
+            unpack = lambda a, b, c, ext: (a[ext], b[ext], c[ext])
+
+            if self.beams == 'O':
+                spec[-1], wav[-1], bpm[-1] = unpack(
+                    *self.load_file(filename2), 0
+                )
+            else:
+                spec[0], wav[0], bpm[0] = spec[-1], wav[-1], bpm[-1]
+                spec[-1], wav[-1], bpm[-1] = unpack(
+                    *self.load_file(filename2), 1
+                )
+        
+        # bounds.shape -> (2, 'CCDs', 2)
+        bounds = self.find_bounds(bpm)
+
+        if self.cont_ord > 0:
+            spec = self.remove_cont(
+                spec,
+                wav,
+                bpm,
+                bounds,
+                self.cont_plot
+            )
+
+        corrdb = np.zeros_like(spec[0])
+        lagsdb = np.zeros_like(spec[0])
+        # for ext, ccd in iters.product(2, range(self.ccds)):
+        # Get the range for current ext./CCD combination
+        curr_bounds = np.array([
+            range(*bounds[0][ccd]),
+            range(*bounds[1][ccd])
+        ])
+
+        # Invert BPM (and account for 2 in BPM) to zero bad pixels
+        sig = spec[:, :, curr_bounds] * abs(bpm[:, :, curr_bounds] * -1 + 1)
+        logging.debug(wav[0][curr_bounds[0]][0], wav[1][curr_bounds[1]][0])
+
+        # Finally(!!!) cross correlate signals
+        corr = signal.correlate(sig[0], sig[1])
+        corr /= np.max(corr)  # Scales array so that the maximum correlation is at 1
+        lags = signal.correlation_lags(sig[0].shape[-1], sig[1].shape[-1])
+
+        corrdb = corr
+        lagsdb = lags
+        # end for loop
         return
 
-    def correlate(self) -> None:
-        for ext, ccd in iters.product(range(self.exts), range(self.ccds)):
-            # Get the range for current extension, ccd combination
-            ccdBound1 = range(*self.bounds1[ext][ccd])
-            ccdBound2 = range(*self.bounds2[ext][ccd])
-
-            # Add rows/cols for correlation and lags data
-            if len(self.corrdb) <= ext:
-                self.corrdb.append([])
-                self.lagsdb.append([])
-            if len(self.corrdb[ext]) <= ccd:
-                self.corrdb[ext].append([])
-                self.lagsdb[ext].append([])
-
-            # Invert BPM (and account for 2 in BPM) to zero bad pixels
-            sig1 = self.spec1[ext][ccdBound1] * abs(self.bpm1[ext][ccdBound1] * -1 + 1)
-            sig2 = self.spec2[ext][ccdBound2] * abs(self.bpm2[ext][ccdBound2] * -1 + 1)
-            print(self.wav1[ccdBound1][0], self.wav2[ccdBound2][0])
-
-            # Finally(!!!) cross correlate signals
-            corr = signal.correlate(sig1, sig2)
-            corr /= np.max(corr)  # Scales array so that the maximum correlation is at 1
-            lags = signal.correlation_lags(sig1.shape[-1], sig2.shape[-1])
-
-            self.corrdb[ext][ccd] = corr
-            self.lagsdb[ext][ccd] = lags
-
-        return
-
-    def checkPlot(self, default_name: str = CORR_SAVENAME) -> None:
+    def checkPlot(self) -> None:
         # Plot
         fig, axs = plt.subplots(3, 3, sharey="row")
 
@@ -349,33 +299,39 @@ class CrossCorrelate:
         if not self.save_name:
             return
 
-        # Handle lazy save_name
-        if self.save_name == ".":
-            self.save_name = os.getcwd()
-
-        # Handle save name directory, use a default name (overwrite with warning)
-        if self.save_name[-1] == "/" or os.path.isdir(self.save_name):
-            self.save_name += default_name
-            print(
-                f"Save name is a directory. Saving cross correlation results as {default_name}"
-            )
-
-        # Check save location valid
-        save_dir = os.path.expanduser("/".join(self.save_name.split("/")[:-1]))
-        if not os.path.isdir(save_dir):
-            raise FileNotFoundError(f"The path ({save_dir}) does not exist")
-
-        # Save
-        if self.save_name != None:
-            fig.savefig(fname=self.save_name)
+        # Handle save
+        fig.savefig(fname=self.save_name)
 
         return
 
     def process(self) -> None:
-        for target in self.fits_list:
-            logging.debug(f"Processing {target}")
-            # self.correlate(target)
-            # self.checkPlot()
+        if self.beams not in ['O', 'E', 'OE']:
+            errMsg = f"Correlation mode '{self.beams}' not recognized."
+            logging.error(errMsg)
+            raise ValueError(errMsg)
+        
+        if self.beams != 'OE' and len(self.fits_list) == 1:
+            # change mode to OE with warning
+            logging.warning((
+                f"`{self.beams}` correlation not possible for "
+                "a single file. correlation `mode` changed to 'OE'."
+            ))
+            self.beams = 'OE'
+            
+        # OE `mode` (same file, diff. ext.)
+        if self.beams == 'OE':
+            for fl in self.fits_list:
+                logging.debug(f"'OE' correlation of {fl}.")
+                self.correlate(fl)
+                self.plot()
+        
+            return
+        
+        # O|E `mode` (diff. files, same ext.)
+        for fl1, fl2 in iters.combinations(self.fits_list):
+            logging.debug(f"{self.beams} correlation of {fl1} vs {fl2}.")
+            self.correlate(fl1, fl2)
+            self.plot()
 
         return
 

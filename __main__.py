@@ -10,6 +10,7 @@ import os
 import sys
 import argparse
 import logging
+from pathlib import Path
 
 from split import Split
 from join import Join
@@ -17,7 +18,7 @@ from cross_correlate import CrossCorrelate
 from skylines import Skylines
 
 from utils import ParserUtils as pu
-from utils.Constants import SPLIT_ROW, PREFIX, PARSE, CORR_SAVENAME
+from utils.Constants import SPLIT_ROW, PREFIX, PARSE, SAVE_CORR, SAVE_SKY
 
 # MARK: Constants
 PROG = "STOPS"
@@ -170,9 +171,21 @@ corr_parser.add_argument(
     nargs="+",
     type=pu.parse_corr_file,
     help=(
-        "Filenames to be compared. "
-        "Provide only one filename for O/E beam comparisons. "
-        "Include relative path to working directory."
+        "File name(s) of FITS file(s) to be correlated. "
+        "A minimum of one filename is required."
+    ),
+)
+corr_parser.add_argument(
+    "-b",
+    "--beams",
+    choices=["O", "E", "OE"],
+    type=str.upper,
+    default=PARSE['BEAMS'],
+    help=(
+        "Beams to correlate. "
+        f"Defaults to {PARSE['BEAMS']}, but "
+        "may be given 'O', 'E', or 'OE' to "
+        "determine which beams are plots."
     ),
 )
 corr_parser.add_argument(
@@ -209,16 +222,16 @@ corr_parser.add_argument(
 )
 corr_parser.add_argument(
     "-s",
-    "--save_name",
+    "--save_prefix",
     action="store",
     nargs="?",
-    const="",
+    type=lambda path: Path(path).expanduser().resolve(),
+    const=SAVE_CORR,
     help=(
-        "Flag and name with which to save the output plot. "
-        "If not invoked, plot will not be saved. "
-        "If invoked with no arguments '-s', "
-        f"plot is saved as {CORR_SAVENAME}. "
-        f"If invoked with a path '-s name, 'name' will be used."
+        "Prefix used when saving plot. "
+        "Excluding flag does not save output plot, "
+        f"flag usage of option uses '{SAVE_CORR}' default prefix, "
+        "and a provided prefix overwrites default prefix."
     ),
 )
 corr_parser.add_argument(
@@ -263,25 +276,26 @@ sky_parser.add_argument(
     "--save_prefix",
     action="store",
     nargs="?",
-    const="sky",
+    type=lambda path: Path(path).expanduser().resolve(),
+    const=SAVE_SKY,
     help=(
         "Prefix used when saving plot. "
         "Excluding flag does not save output plot, "
-        "flag usage of option uses 'sky' default prefix, "
+        f"flag usage of option uses '{SAVE_SKY}' default prefix, "
         "and a provided prefix overwrites default prefix."
     ),
 )
 sky_parser.add_argument(
     "-b",
     "--beams",
-    choices=["o", "e", "oe"],
+    choices=["O", "E", "OE"],
     type=str.lower,
     default=PARSE['BEAMS'],
     help=(
         "Beam(s) for skyline checking. "
-        "Defaults to both beams overplotted, but "
-        "may be given either 'o', 'e', or 'oe' for "
-        "separating and excluding beam plots."
+        f"Defaults to {PARSE['BEAMS']}, but "
+        "may be given 'O', 'E', or 'OE' to "
+        "determine which beams are plots."
     ),
 )
 sky_parser.add_argument(
