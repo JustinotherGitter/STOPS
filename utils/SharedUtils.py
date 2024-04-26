@@ -100,7 +100,7 @@ def find_arc(filenames: list[Path]) -> Path:
 # MARK: Continuum
 def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.array:
     if plot:
-        fig, axs = plt.subplots(2, 1, True)
+        fig, axs = plt.subplots(2, 1, sharex=True)
         axs[0].plot(w, spec, label="data")
 
     nw = w.copy()

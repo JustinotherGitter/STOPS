@@ -1,0 +1,53 @@
+figure.figsize:		    6.33, 2.97 #7.48, 5.27
+figure.subplot.left:    0.07  # the left side of the subplots of the figure
+figure.subplot.bottom:  0.09   # the bottom of the subplots of the figure
+figure.subplot.right:   0.98    # the right side of the subplots of the figure
+figure.subplot.top:     0.99   # the top of the subplots of the figure
+figure.subplot.wspace:  0.02    # the amount of width reserved for space between subplots,
+                               # expressed as a fraction of the average axis width
+figure.subplot.hspace:  0.25    # the amount of height reserved for space between subplots,
+                               # expressed as a fraction of the average axis height
+text.usetex:            True
+font.family:            serif
+# font.sans-serif:        Arial
+axes.xmargin:           .05
+axes.ymargin:           .05
+lines.markersize:       6
+lines.linewidth:        0.8
+
+axes.labelsize:		12
+axes.titlesize: 	14
+font.size:          12
+legend.fontsize:    12
+legend.title_fontsize: 14
+
+# figure.dpi: 		500
+# savefig.dpi:      500
+axes.labelweight:	bold
+axes.labelpad: 		2
+axes.grid:          False
+axes.grid.which:    major
+axes.grid.axis:     x
+axes.prop_cycle:    cycler('color', ['313e80', '5ce7a8', '0f4636', '00c3ff', '006bd3', '179b7d'])                           
+grid.linestyle:     --
+
+xtick.labelsize:    12
+ytick.labelsize:    12
+xtick.bottom:       True
+xtick.top:          True
+ytick.left:         True
+ytick.right:        True
+xtick.major.size:   6
+xtick.minor.size:   4
+ytick.major.size:   6
+ytick.minor.size:   4
+xtick.major.width:  1.0
+xtick.minor.width:  0.5
+ytick.major.width:  1.0
+ytick.minor.width:  0.5
+xtick.major.pad:    6
+xtick.minor.pad:    6
+ytick.major.pad:    6
+ytick.minor.pad:    6
+ytick.direction:    in
+xtick.direction:    in

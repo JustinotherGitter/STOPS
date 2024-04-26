@@ -21,6 +21,8 @@ from scipy import signal
 from utils.SharedUtils import find_files, continuum
 from utils.Constants import SAVE_CORR
 
+OFFSET = 0.3
+
 # MARK: Correlate class
 class CrossCorrelate:
     """
@@ -109,7 +111,7 @@ class CrossCorrelate:
 
         self.save_name = save_prefix
         # Handle directory save name
-        if not self.save_name and self.save_name.is_dir():
+        if self.save_name and self.save_name.is_dir():
             self.save_name /= SAVE_CORR
             logging.warning((
                 f"Correlation save name resolves to a directory. "
@@ -118,14 +120,7 @@ class CrossCorrelate:
 
         self.unit_wav = "$\AA$"
 
-        # self.bounds = None # bounds1, bounds2
-        # # In process:
-        # self.bounds = self.setBounds()
-
-        self.corrdb = []
-        self.lagsdb = []
-
-        logging.debug(self.__dict__)
+        logging.debug("__init__ - \n", self.__dict__)
         return
     
     def load_file(
@@ -142,6 +137,7 @@ class CrossCorrelate:
                 * hdul["SCI"].header["CDELT1"]
                 + hdul["SCI"].header["CRVAL1"]
             )
+            wav = np.array((wav, wav))
             bpm = hdul["BPM"].data.sum(axis=1)
 
             if hdul["SCI"].header["CTYPE1"] != 'Angstroms':
@@ -149,7 +145,7 @@ class CrossCorrelate:
 
         return spec, wav, bpm
 
-    def find_bounds(self, bpm: np.ndarray) -> np.ndarray:
+    def get_bounds(self, bpm: np.ndarray) -> np.ndarray:
         """Find the bounds for a file based on the CCD count."""
         # bounds.shape -> (O|E, CCD's, low.|up. bound)
         if self.ccds == 1:
@@ -170,33 +166,42 @@ class CrossCorrelate:
             )
 
         return bounds.astype(int)
-
-    def remove_cont(
+    
+    def split_ccds(
         self,
         spec: np.ndarray,
         wav: np.ndarray,
-        bpm: np.ndarray,
-        bounds: np.ndarray,
+        bpm: np.ndarray
+    ) -> list[list]:
+        out = []
+        bounds = self.find_bounds(bpm)
+        for arr in [spec, wav, bpm]:
+            arr = [[arr[ext, bounds[ext, ccd, 0]:bounds[ext, ccd, 1]] for ccd in range(self.ccds)] for ext in range(2)]
+            out.append(arr)
+
+        return out
+
+    def remove_cont(
+        self,
+        spec: list,
+        wav: list,
+        bpm: list,
         plotCont: bool
     ) -> None:
-        for ext, ccd in iters.product(range(2), range(self.ccds)):
-            # Get the range for current extension, ccd combination
-            ccdBound = range(*bounds[ext][ccd])
+        # Mask out the bad pixels for fitting continua
+        okwav = np.where(bpm != 1)
 
-            # Mask out the bad pixels for fitting continua
-            okwav = np.where(bpm[ext][ccdBound] != 1)
+        # Define continua
+        ctm = continuum(
+            wav[okwav],
+            spec[okwav],
+            deg=self.cont_ord,
+            plot=plotCont,
+        )
 
-            # Define continua
-            ctm = continuum(
-                wav[ccdBound][okwav],
-                spec[ext][ccdBound][okwav],
-                deg=self.cont_ord,
-                plot=plotCont,
-            )
-
-            # Normalise spectra
-            spec[ext][ccdBound] /= chebyshev.chebval(wav[ccdBound], ctm)
-            spec[ext][ccdBound] -= 1
+        # Normalise spectra
+        spec /= chebyshev.chebval(wav, ctm)
+        spec -= 1
 
         return spec
 
@@ -205,94 +210,162 @@ class CrossCorrelate:
         filename1: Path,
         filename2: Path | None = None
     ) -> None:
-        # (spec / wav / bpm).shape -> (2, 'CCDs', 'val.')
-        #  OE -> 'O1' and 'E1', O -> 'O1' and 'O2', E -> 'E1' and 'E2'
+        #  mode: OE -> 'O1' & 'E1', O -> 'O1' & 'O2', E -> 'E1' & 'E2'
+        # Load data
         spec, wav, bpm = self.load_file(filename1)
-        if not filename2:
-            unpack = lambda a, b, c, ext: (a[ext], b[ext], c[ext])
+        if filename2 and self.beams != 'OE':
+            unpack = lambda ext, *args: [arr[ext] for arr in args]
 
             if self.beams == 'O':
                 spec[-1], wav[-1], bpm[-1] = unpack(
-                    *self.load_file(filename2), 0
+                    0, *self.load_file(filename2)
                 )
+
             else:
                 spec[0], wav[0], bpm[0] = spec[-1], wav[-1], bpm[-1]
                 spec[-1], wav[-1], bpm[-1] = unpack(
-                    *self.load_file(filename2), 1
+                    -1, *self.load_file(filename2)
                 )
-        
-        # bounds.shape -> (2, 'CCDs', 2)
-        bounds = self.find_bounds(bpm)
 
-        if self.cont_ord > 0:
-            spec = self.remove_cont(
-                spec,
-                wav,
-                bpm,
-                bounds,
-                self.cont_plot
+        bounds = self.get_bounds(bpm)
+
+        logging.debug(
+            f"correlate - data shape:\n\tspec/wav/bpm: {spec.shape}"
+        )
+
+        corrdb = [[] for _ in range(self.ccds)]
+        lagsdb = [[] for _ in range(self.ccds)]
+        for ccd in range(self.ccds):
+            sig = []
+            for ext in range(2):
+                lb, ub = bounds[ext, ccd]
+
+                if self.cont_ord > 0:
+                    spec[ext, lb:ub] = self.remove_cont(
+                        spec[ext, lb:ub],
+                        wav[ext, lb:ub],
+                        bpm[ext, lb:ub],
+                        self.cont_plot
+                    )
+
+                # Invert BPM (and account for 2); zero bad pixels
+                sig.append((
+                    spec[ext, lb:ub]
+                    * abs(bpm[ext, lb:ub] * -1 + 1)
+                ))
+
+            # Finally(!!!) cross correlate signals and scale max -> 1
+            corrdb[ccd] = signal.correlate(*sig)
+            corrdb[ccd] /= np.max(corrdb[ccd])
+            lagsdb[ccd] = signal.correlation_lags(
+                sig[0].shape[-1],
+                sig[1].shape[-1]
             )
 
-        corrdb = np.zeros_like(spec[0])
-        lagsdb = np.zeros_like(spec[0])
-        # for ext, ccd in iters.product(2, range(self.ccds)):
-        # Get the range for current ext./CCD combination
-        curr_bounds = np.array([
-            range(*bounds[0][ccd]),
-            range(*bounds[1][ccd])
-        ])
+        return (spec, wav, bpm), (corrdb, lagsdb)
+    
+    def FTCS(
+        self,
+        filename1: Path,
+        filename2: Path | None = None
+    ) -> None:
+        #  mode: OE -> 'O1' & 'E1', O -> 'O1' & 'O2', E -> 'E1' & 'E2'
+        # Load data
+        spec, wav, bpm = self.load_file(filename1)
+        if filename2 and self.beams != 'OE':
+            unpack = lambda ext, *args: [arr[ext] for arr in args]
 
-        # Invert BPM (and account for 2 in BPM) to zero bad pixels
-        sig = spec[:, :, curr_bounds] * abs(bpm[:, :, curr_bounds] * -1 + 1)
-        logging.debug(wav[0][curr_bounds[0]][0], wav[1][curr_bounds[1]][0])
+            if self.beams == 'O':
+                spec[-1], wav[-1], bpm[-1] = unpack(
+                    0, *self.load_file(filename2)
+                )
 
-        # Finally(!!!) cross correlate signals
-        corr = signal.correlate(sig[0], sig[1])
-        corr /= np.max(corr)  # Scales array so that the maximum correlation is at 1
-        lags = signal.correlation_lags(sig[0].shape[-1], sig[1].shape[-1])
+            else:
+                spec[0], wav[0], bpm[0] = spec[-1], wav[-1], bpm[-1]
+                spec[-1], wav[-1], bpm[-1] = unpack(
+                    -1, *self.load_file(filename2)
+                )
 
-        corrdb = corr
-        lagsdb = lags
-        # end for loop
-        return
+        bounds = self.get_bounds(bpm)
 
-    def checkPlot(self) -> None:
-        # Plot
-        fig, axs = plt.subplots(3, 3, sharey="row")
+        logging.debug(
+            f"FTSC - data shape:\n\tspec/wav/bpm: {spec.shape}"
+        )
 
-        for ext, ccd in iters.product(range(self.exts), range(self.ccds)):
-            # Add cross correlation to plots
+        corrdb = [[] for _ in range(self.ccds)]
+        lagsdb = [[] for _ in range(self.ccds)]
+        for ccd in range(self.ccds):
+            sig = []
+            for ext in range(2):
+                lb, ub = bounds[ext, ccd]
+
+                if self.cont_ord > 0:
+                    spec[ext, lb:ub] = self.remove_cont(
+                        spec[ext, lb:ub],
+                        wav[ext, lb:ub],
+                        bpm[ext, lb:ub],
+                        self.cont_plot
+                    )
+
+                # Invert BPM (and account for 2); zero bad pixels
+                ft_spec = np.fft.fft(spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1))
+                sig.append(ft_spec)
+
+            # Finally(!!!) cross correlate signals and scale max -> 1
+            corrdb[ccd] = np.fft.ifft(signal.correlate(*sig)) # ft_spectrum1 * np.conj(ft_spectrum2)
+            corrdb[ccd] /= np.max(corrdb[ccd])
+            lagsdb[ccd] = signal.correlation_lags(
+                sig[0].shape[-1],
+                sig[1].shape[-1]
+            )
+
+        return (spec, wav, bpm), (corrdb, lagsdb)
+
+    def plot(self, spec, wav, bpm, corrdb, lagsdb) -> None:
+        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
+        bounds = self.get_bounds(bpm)
+
+        fig, axs = plt.subplots(2, self.ccds, sharey="row")
+
+        if self.ccds == 1:
+            # Convert axs to a 2D array
+            axs = np.swapaxes(np.atleast_2d(axs), 0, 1)
+
+        # for ext, ccd in iters.product(range(2), range(self.ccds)):
+
+        for ccd in range(self.ccds):
             axs[0, ccd].plot(
-                self.lagsdb[ext][ccd],
-                self.corrdb[ext][ccd] * 100,
-                label=f"Ext: {ext + 1}, max lag @ {self.lagsdb[ext][ccd][self.corrdb[ext][ccd].argmax()]}",
+                lagsdb[ccd],
+                corrdb[ccd] * 100,
+                color='C4',
+                label=f"max lag @ {lagsdb[ccd][corrdb[ccd].argmax()]}",
             )
 
-            ccdBound1 = range(*self.bounds1[ext][ccd])
-            ccdBound2 = range(*self.bounds2[ext][ccd])
+            for ext in range(2):
+                lb, ub = bounds[ext, ccd]
+                logging.debug(f"fl-{ext}: {wav[ext, lb]}:{wav[ext, ub - 1]}")
 
-            axs[ext + 1, ccd].plot(
-                self.wav2[ccdBound2],
-                self.spec2[ext][ccdBound2] * abs(self.bpm2[ext][ccdBound2] * -1 + 1),
-                label="sig2",
-            )
-            axs[ext + 1, ccd].plot(
-                self.wav1[ccdBound1],
-                self.spec1[ext][ccdBound1] * abs(self.bpm1[ext][ccdBound1] * -1 + 1),
-                label="sig1",
-            )
+                axs[1, ccd].plot(
+                    wav[ext, lb:ub],
+                    spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1) + OFFSET * ext,
+                    label=(
+                        f"${self.beams if self.beams != 'OE' else self.beams[ext]}"
+                        f"_{ext + 1 if self.beams != 'OE' else 1}$"
+                        f"{(' (+' + str(OFFSET * ext) + ')') if ext > 0 else ''}"
+                    ),
+                )
 
-        axs[0, 0].set_ylabel("Normalised Correlation\n(%)")
+        axs[0, 0].set_ylabel("Normalised Correlation\n(\%)")
         for ax in axs[0, :]:
             ax.set_xlabel("Signal Lag")
-        for i, ax in enumerate(axs[1:, 0]):
-            ax.set_ylabel(f"Ext. {i + 1} - Norm. Intensity\n(Counts)")
+        for ax in axs[1:, 0]:
+            ax.set_ylabel(f"Norm. Intensity\n(Counts)")
         for ax in axs[-1, :]:
-            ax.set_xlabel(f"Wavelength ({self.wavUnits})")
+            ax.set_xlabel(f"Wavelength ({self.unit_wav})")
         for ax in axs.flatten():
             ax.legend()
 
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
 
         # Handle do not save
@@ -321,17 +394,17 @@ class CrossCorrelate:
         # OE `mode` (same file, diff. ext.)
         if self.beams == 'OE':
             for fl in self.fits_list:
-                logging.debug(f"'OE' correlation of {fl}.")
-                self.correlate(fl)
-                self.plot()
-        
+                logging.info(f"'OE' correlation of {fl}.")
+                (spec, wav, bpm), (corr, lags) = self.correlate(fl)#self.FTCS(fl)
+                self.plot(spec, wav, bpm, corr, lags)
+
             return
         
         # O|E `mode` (diff. files, same ext.)
-        for fl1, fl2 in iters.combinations(self.fits_list):
-            logging.debug(f"{self.beams} correlation of {fl1} vs {fl2}.")
-            self.correlate(fl1, fl2)
-            self.plot()
+        for fl1, fl2 in iters.combinations(self.fits_list, 2):
+            logging.info(f"{self.beams} correlation of {fl1} vs {fl2}.")
+            (spec, wav, bpm), (corr, lags) = self.correlate(fl1, fl2)#self.FTCS(fl1, fl2)
+            self.plot(spec, wav, bpm, corr, lags)
 
         return
 
