@@ -11,6 +11,7 @@ import sys
 import logging
 import itertools as iters
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 from numpy.polynomial import chebyshev
@@ -45,18 +46,61 @@ class CrossCorrelate:
     cont_plot : bool, optional
         Decides whether or not the continuum fitting should be plotted
         (The default is False, so no continua plots are displayed)
-    save_name : str, optional
+    save_prefix : str, optional
         The name or directory to save the figure produced to.
-        "." saves a default name to the current working. A default name is also used when save_name is a directory.
+        "." saves a default name to the current working. A default name is also used when save_prefix is a directory.
         (The default is None, I.E. The figure is not saved, only displayed)
 
     Attributes
     ----------
-    
+    data_dir
+    fits_list
+    beams : str
+        The mode of correlation.
+        'OE' for same file, and 'O' or 'E' for different files but same ext's.
+    ccds : int
+        The number of CCD's in the data. Used to split the CCD's if split_ccd is True.
+    cont_ord : int
+        The degree of the chebyshev to fit to the continuum.
+    cont_plot : bool
+        Decides whether or not the continuum fitting should be plotted
+    offset : int
+        The amount the spectrum is shifted, mainly to test the effect of the cross correlation
+        (The default is 0, I.E. no offset introduced)
+    save_prefix
+    wav_unit : str
+        The units of the wavelength axis.
+        (The default is Angstroms)
+    wav_cdelt : int
+        The wavelength increment.
+        (The default is 1)
+    alt : Callable
+        An alternate method of cross correlating the data.
+        (The default is None)
     
     Methods
     -------
-
+    load_file(filename: Path)
+        -> tuple[np.ndarray, np.ndarray, np.ndarray]
+        Loads the data from a FITS file.
+    get_bounds(bpm: np.ndarray)
+        -> np.ndarray
+        Finds the bounds for the CCD regions.
+    remove_cont(spec: list, wav: list, bpm: list, plotCont: bool)
+        -> None
+        Removes the continuum from the data.
+    correlate(filename1: Path, filename2: Path | None = None)
+        -> None
+        Cross correlates the data.
+    FTCS(filename1: Path, filename2: Path | None = None)
+        -> None
+        Cross correlates the data using the Fourier Transform.
+    plot(spec, wav, bpm, corrdb, lagsdb)
+        -> None
+        Plots the data.
+    process()
+        -> None
+        Processes the data.
     
     Other Parameters
     ----------------
@@ -65,14 +109,22 @@ class CrossCorrelate:
         (The default is 0, I.E. no offset introduced)
     **kwargs : dict
         keyword arguments. Allows for passing unpacked dictionary to the class constructor.
+        FTCS : bool, optional
+            Decides whether the Fourier Transform should be used for cross correlation.
 
     See Also
     --------
     scipy.signal.correlate
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html#scipy.signal.correlate
 
+        
+    Notes
+    -----
+    Constants Imported (See utils.Constants):
+        SAVE_CORR
+    
     """
-
+    # MARK: Correlate init
     def __init__(
         self,
         data_dir: Path,
@@ -92,6 +144,7 @@ class CrossCorrelate:
             prefix="ecwmxgbp",
             ext="fits",
         )
+        self._beams = None
         self.beams = beams
         self.ccds = 1
         if split_ccd:
@@ -104,29 +157,63 @@ class CrossCorrelate:
         self.offset = offset
         if offset != 0:
             logging.warning("'offset' is only for testing.")
-        # # Add an offset to the spectra to test cross correlation
-        # self.spec1 = np.insert(
-        #     self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
-        # )[:, : self.spec1.shape[-1]]
+            # # Add an offset to the spectra to test cross correlation
+            # self.spec1 = np.insert(
+            #     self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
+            # )[:, : self.spec1.shape[-1]]
 
-        self.save_name = save_prefix
+        self.save_prefix = save_prefix
         # Handle directory save name
-        if self.save_name and self.save_name.is_dir():
-            self.save_name /= SAVE_CORR
+        if self.save_prefix and self.save_prefix.is_dir():
+            self.save_prefix /= SAVE_CORR
             logging.warning((
                 f"Correlation save name resolves to a directory. "
-                f"Saving under {self.save_name}"
+                f"Saving under {self.save_prefix}"
                 ))
 
-        self.unit_wav = "$\AA$"
+        self.wav_unit = "$\AA$"
+        self.wav_cdelt = 1 
+
+        self.alt = self.FTCS if kwargs.get("FTCS") else None
 
         logging.debug("__init__ - \n", self.__dict__)
         return
     
+    # MARK: Beams property
+    @property
+    def beams(self) -> str:
+        return self._beams
+    
+    @beams.setter
+    def beams(self, mode: str) -> None:
+        if mode not in ['O', 'E', 'OE']:
+            errMsg = f"Correlation mode '{mode}' not recognized."
+            logging.error(errMsg)
+            raise ValueError(errMsg)
+        
+        self._beams = mode
+
+        return
+    
+    # MARK: Load file
     def load_file(
         self,
         filename: Path
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Load the data from a FITS file.
+        
+        Parameters
+        ----------
+        filename : Path
+            The name of the FITS file to load.
+        
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            The spectrum, wavelength, and bad pixel mask.
+        
+        """
         spec, wav, bpm = None, None, None
 
         # Open HDU
@@ -140,13 +227,29 @@ class CrossCorrelate:
             wav = np.array((wav, wav))
             bpm = hdul["BPM"].data.sum(axis=1)
 
+            self.wav_cdelt = float(hdul["SCI"].header["CDELT1"])
+
             if hdul["SCI"].header["CTYPE1"] != 'Angstroms':
-                self.wav_units = hdul["SCI"].header["CTYPE1"]
+                self.wav_unit = hdul["SCI"].header["CTYPE1"]
 
         return spec, wav, bpm
 
+    # MARK: Get bounds
     def get_bounds(self, bpm: np.ndarray) -> np.ndarray:
-        """Find the bounds for a file based on the CCD count."""
+        """
+        Find the bounds for a file based on the CCD count.
+        
+        Parameters
+        ----------
+        bpm : np.ndarray
+            The bad pixel mask.
+        
+        Returns
+        -------
+        np.ndarray
+            The bounds for the CCD regions.
+        
+        """
         # bounds.shape -> (O|E, CCD's, low.|up. bound)
         if self.ccds == 1:
             return np.array(
@@ -166,21 +269,8 @@ class CrossCorrelate:
             )
 
         return bounds.astype(int)
-    
-    def split_ccds(
-        self,
-        spec: np.ndarray,
-        wav: np.ndarray,
-        bpm: np.ndarray
-    ) -> list[list]:
-        out = []
-        bounds = self.find_bounds(bpm)
-        for arr in [spec, wav, bpm]:
-            arr = [[arr[ext, bounds[ext, ccd, 0]:bounds[ext, ccd, 1]] for ccd in range(self.ccds)] for ext in range(2)]
-            out.append(arr)
 
-        return out
-
+    # MARK: Remove Continua
     def remove_cont(
         self,
         spec: list,
@@ -188,6 +278,25 @@ class CrossCorrelate:
         bpm: list,
         plotCont: bool
     ) -> None:
+        """
+        Remove the continuum from the data.
+
+        Parameters
+        ----------
+        spec : list
+            The spectrum to remove the continuum from.
+        wav : list
+            The wavelength of the spectrum.
+        bpm : list
+            The bad pixel mask.
+        plotCont : bool
+            Decides whether or not the continuum fitting should be plotted
+        
+        Returns
+        -------
+        None
+
+        """
         # Mask out the bad pixels for fitting continua
         okwav = np.where(bpm != 1)
 
@@ -205,11 +314,32 @@ class CrossCorrelate:
 
         return spec
 
+    # MARK: Correlate
     def correlate(
         self,
         filename1: Path,
-        filename2: Path | None = None
+        filename2: Path | None = None,
+        alt: Callable = None
     ) -> None:
+        """
+        Cross correlates the data.
+
+        Parameters
+        ----------
+        filename1 : Path
+            The name of the first FITS file to cross correlate.
+        filename2 : Path, optional
+            The name of the second FITS file to cross correlate.
+            (Defaults to None)
+        alt : Callable, optional
+            An alternate method of cross correlating the data.
+            (Defaults to None)
+        
+        Returns
+        -------
+        None
+
+        """
         #  mode: OE -> 'O1' & 'E1', O -> 'O1' & 'O2', E -> 'E1' & 'E2'
         # Load data
         spec, wav, bpm = self.load_file(filename1)
@@ -255,73 +385,79 @@ class CrossCorrelate:
                 ))
 
             # Finally(!!!) cross correlate signals and scale max -> 1
-            corrdb[ccd] = signal.correlate(*sig)
+            corrdb[ccd] = signal.correlate(*sig) if not alt else alt(*sig)
             corrdb[ccd] /= np.max(corrdb[ccd])
             lagsdb[ccd] = signal.correlation_lags(
                 sig[0].shape[-1],
                 sig[1].shape[-1]
-            )
+            ) * self.wav_cdelt
 
         return (spec, wav, bpm), (corrdb, lagsdb)
     
+    # MARK: FTCS alternate 
     def FTCS(
         self,
-        filename1: Path,
-        filename2: Path | None = None
+        signal1: np.ndarray,
+        signal2: np.ndarray
     ) -> None:
-        #  mode: OE -> 'O1' & 'E1', O -> 'O1' & 'O2', E -> 'E1' & 'E2'
-        # Load data
-        spec, wav, bpm = self.load_file(filename1)
-        if filename2 and self.beams != 'OE':
-            unpack = lambda ext, *args: [arr[ext] for arr in args]
+        """
+        Cross correlates the data using the Fourier Transform.
 
-            if self.beams == 'O':
-                spec[-1], wav[-1], bpm[-1] = unpack(
-                    0, *self.load_file(filename2)
-                )
+        Parameters
+        ----------
+        signal1 : np.ndarray
+            The first signal to cross correlate.
+        signal2 : np.ndarray
+            The second signal to cross correlate.
 
-            else:
-                spec[0], wav[0], bpm[0] = spec[-1], wav[-1], bpm[-1]
-                spec[-1], wav[-1], bpm[-1] = unpack(
-                    -1, *self.load_file(filename2)
-                )
+        Returns
+        -------
+        np.ndarray
+            The correlation data using the Fourier Transform.
 
-        bounds = self.get_bounds(bpm)
-
+        """
         logging.debug(
-            f"FTSC - data shape:\n\tspec/wav/bpm: {spec.shape}"
+            f"FTCS - data shape:\n\tspec/wav/bpm: {signal1.shape}"
         )
 
-        corrdb = [[] for _ in range(self.ccds)]
-        lagsdb = [[] for _ in range(self.ccds)]
-        for ccd in range(self.ccds):
-            sig = []
-            for ext in range(2):
-                lb, ub = bounds[ext, ccd]
+        # Invert BPM (and account for 2); zero bad pixels
+        ft_spec1 = np.fft.fft(signal1)
+        ft_spec2 = np.fft.fft(signal2)
 
-                if self.cont_ord > 0:
-                    spec[ext, lb:ub] = self.remove_cont(
-                        spec[ext, lb:ub],
-                        wav[ext, lb:ub],
-                        bpm[ext, lb:ub],
-                        self.cont_plot
-                    )
+        if self.cont_plot:
+            plt.plot(ft_spec1)
+            plt.plot(ft_spec2)
+            plt.show()
 
-                # Invert BPM (and account for 2); zero bad pixels
-                ft_spec = np.fft.fft(spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1))
-                sig.append(ft_spec)
+        # Cross correlate signals
+        # ft_spectrum1 * np.conj(ft_spectrum2)
+        corr_entry = signal.correlate(ft_spec1, ft_spec2)
 
-            # Finally(!!!) cross correlate signals and scale max -> 1
-            corrdb[ccd] = np.fft.ifft(signal.correlate(*sig)) # ft_spectrum1 * np.conj(ft_spectrum2)
-            corrdb[ccd] /= np.max(corrdb[ccd])
-            lagsdb[ccd] = signal.correlation_lags(
-                sig[0].shape[-1],
-                sig[1].shape[-1]
-            )
+        return np.fft.ifft(corr_entry)
 
-        return (spec, wav, bpm), (corrdb, lagsdb)
-
+    # MARK: Plot
     def plot(self, spec, wav, bpm, corrdb, lagsdb) -> None:
+        """
+        Plot the data.
+
+        Parameters
+        ----------
+        spec : np.ndarray
+            The spectrum.
+        wav : np.ndarray
+            The wavelength.
+        bpm : np.ndarray
+            The bad pixel mask.
+        corrdb : np.ndarray
+            The cross correlation data.
+        lagsdb : np.ndarray
+            The lags data.
+
+        Returns
+        -------
+        None
+
+        """
         plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
         bounds = self.get_bounds(bpm)
 
@@ -338,7 +474,7 @@ class CrossCorrelate:
                 lagsdb[ccd],
                 corrdb[ccd] * 100,
                 color='C4',
-                label=f"max lag @ {lagsdb[ccd][corrdb[ccd].argmax()]}",
+                label=f"max lag @ {lagsdb[ccd][corrdb[ccd].argmax()] - (bounds[1, ccd, 0] - bounds[0, ccd, 0])}",
             )
 
             for ext in range(2):
@@ -361,28 +497,35 @@ class CrossCorrelate:
         for ax in axs[1:, 0]:
             ax.set_ylabel(f"Norm. Intensity\n(Counts)")
         for ax in axs[-1, :]:
-            ax.set_xlabel(f"Wavelength ({self.unit_wav})")
+            ax.set_xlabel(f"Wavelength ({self.wav_unit})")
         for ax in axs.flatten():
             ax.legend()
 
         # plt.tight_layout()
+        # fig1 = plt.gcf()
+        # DPI = fig1.get_dpi()
+        # fig1.set_size_inches(700.0/float(DPI), 250.0/float(DPI))
         plt.show()
 
         # Handle do not save
-        if not self.save_name:
+        if not self.save_prefix:
             return
 
         # Handle save
-        fig.savefig(fname=self.save_name)
+        fig.savefig(fname=self.save_prefix)
 
         return
 
+    # MARK: Process all listed images
     def process(self) -> None:
-        if self.beams not in ['O', 'E', 'OE']:
-            errMsg = f"Correlation mode '{self.beams}' not recognized."
-            logging.error(errMsg)
-            raise ValueError(errMsg)
-        
+        """
+        Process the data.
+
+        Returns
+        -------
+        None
+
+        """
         if self.beams != 'OE' and len(self.fits_list) == 1:
             # change mode to OE with warning
             logging.warning((
@@ -390,25 +533,26 @@ class CrossCorrelate:
                 "a single file. correlation `mode` changed to 'OE'."
             ))
             self.beams = 'OE'
-            
+
         # OE `mode` (same file, diff. ext.)
         if self.beams == 'OE':
             for fl in self.fits_list:
                 logging.info(f"'OE' correlation of {fl}.")
-                (spec, wav, bpm), (corr, lags) = self.correlate(fl)#self.FTCS(fl)
+                (spec, wav, bpm), (corr, lags) = self.correlate(fl, alt=self.alt)
                 self.plot(spec, wav, bpm, corr, lags)
 
             return
-        
+
         # O|E `mode` (diff. files, same ext.)
         for fl1, fl2 in iters.combinations(self.fits_list, 2):
             logging.info(f"{self.beams} correlation of {fl1} vs {fl2}.")
-            (spec, wav, bpm), (corr, lags) = self.correlate(fl1, fl2)#self.FTCS(fl1, fl2)
+            (spec, wav, bpm), (corr, lags) = self.correlate(fl1, fl2, alt=self.alt)
             self.plot(spec, wav, bpm, corr, lags)
 
         return
 
 
+# MARK: Main function
 def main(argv) -> None:
     return
 

@@ -107,6 +107,7 @@ def continuum(w, spec, deg=11, std=1.6, steps=5, pos=False, plot=False) -> np.ar
     nspec = spec.copy()
 
     for i in range(steps):
+        # warnings.simplefilter('ignore', np.RankWarning)
         p = chebyshev.chebfit(nw, nspec, deg=deg)
         ch = chebyshev.chebval(nw, p)
         diff = nspec - ch

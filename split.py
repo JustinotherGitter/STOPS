@@ -270,6 +270,10 @@ class Split:
             Indicates whether the first entry should be the arc frame.
             (Defaults to True)
 
+        Returns
+        -------
+        None
+
         """
         if arc:
             self.o_files.insert(0, o_name)
@@ -292,7 +296,14 @@ class Split:
 
     # MARK: Process all Listed Images
     def process(self) -> None:
-        """Process all FITS images stored in the `fits_list` attribute"""
+        """
+        Process all FITS images stored in the `fits_list` attribute
+        
+        Returns
+        -------
+        None
+        
+        """
         for target in self.fits_list:
             logging.debug(f"Processing {target}")
             self.split_file(target)

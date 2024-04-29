@@ -17,7 +17,7 @@ from numpy.polynomial.chebyshev import chebgrid2d as chebgrid2d
 from numpy.polynomial.legendre import leggrid2d as leggrid2d
 from astropy.io import fits as pyfits
 
-# from lacosmic import lacosmic # Deprecated: ccdproc is ~6x faster
+# from lacosmic import lacosmic # Replaced: ccdproc is ~6x faster
 from ccdproc import cosmicray_lacosmic as lacosmic
 
 from utils.specpolpy3 import read_wollaston, split_sci
