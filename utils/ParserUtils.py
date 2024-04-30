@@ -8,7 +8,10 @@ from pathlib import Path
 
 # MARK: Parse Path
 def parse_path(path: str) -> Path:
+    # Expand and resolve the path
     path = Path(path).expanduser().resolve()
+
+    # Check if the path is a directory
     if path.is_dir():
         os.chdir(path)
         return path
@@ -20,35 +23,28 @@ def parse_path(path: str) -> Path:
 
 # MARK: Parse File
 def parse_file(filename: str) -> Path:
+    # Expand and resolve the filename
     filename = Path(filename).expanduser().resolve()
+
+    # Check if the file is a directory
+    if filename.is_dir():
+        errMsg = f"Filename, {filename}, is a directory."
+        raise IsADirectoryError(errMsg)
+
+    # Check if the file exists
     if filename.is_file():
         return filename
 
-    # Raise File not found error
-    msg = f" The filename `{filename}` is not valid."
-    raise FileNotFoundError(msg)
-
-
-# MARK: Parse Correlation File
-def parse_corr_file(filename: str) -> Path:
-    filelike = Path(filename)
-    filelist = Path(filelike.parent).glob(filelike.name)
+    # Check if the file is a regex pattern
+    filelist = Path(filename).parent.glob(Path(filename).name)
     filelist = sorted(filelist)
 
+    # Check if the filelist is empty
     if not filelist:
-        errMsg = f"No file, {filename}, found."
+        errMsg = f"No file(s), {filename}, found."
         raise FileNotFoundError(errMsg)
 
     return filelist
-
-
-# MARK: Parse Surface Function File
-def parse_coeff_file(filename: str) -> list[Path]:
-    try:
-        return [parse_file(filename)]
-
-    except:
-        return list(sorted(Path().glob(filename)))
 
 
 # MARK: Parse Logging Level

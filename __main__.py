@@ -78,7 +78,7 @@ parser.add_argument(
 )
 
 
-# MARK: Split\Join Parent Args
+# MARK: Split\Join Parent
 split_join_args = argparse.ArgumentParser(add_help=False)
 split_join_args.add_argument(
     "-n",
@@ -144,7 +144,7 @@ join_parser.add_argument(
     "--coefficients",
     dest="solutions_list",
     nargs='*',
-    type=pu.parse_coeff_file,
+    type=pu.parse_file,
     help=(
         "Custom coefficients to use instead of the `IRAF` fitcoords "
         "database. Use as either '-c <o_solution> <e_solution>' or "
@@ -169,7 +169,7 @@ corr_parser.add_argument(
     "filenames",
     action="store",
     nargs="+",
-    type=pu.parse_corr_file,
+    type=pu.parse_file,
     help=(
         "File name(s) of FITS file(s) to be correlated. "
         "A minimum of one filename is required."
@@ -212,13 +212,9 @@ corr_parser.add_argument(
 )
 corr_parser.add_argument(
     "-p",
-    "--continuum_plot",
+    "--plot",
     action="store_true",
-    dest="cont_plot",
-    help=(
-        "Flag to plot fitting of continuum. "
-        "Used to confirm only notable features left in spectrum."
-    ),
+    help="Flag for additional plot outputs.",
 )
 corr_parser.add_argument(
     "-s",
@@ -289,7 +285,7 @@ sky_parser.add_argument(
     "-b",
     "--beams",
     choices=["O", "E", "OE"],
-    type=str.lower,
+    type=str.upper,
     default=PARSE['BEAMS'],
     help=(
         "Beam(s) for skyline checking. "
@@ -303,11 +299,16 @@ sky_parser.add_argument(
     "--transform",
     action="store_true",
     help=(
-        "Flag to NOT transform image. "
-        "Defaults to true. "
+        "Flag to NOT transform images. "
         "Recommended to use only when input image(s) "
         "are already transformed."
     ),
+)
+sky_parser.add_argument(
+    "-p",
+    "--plot",
+    action="store_true",
+    help="Flag for additional plot outputs.",
 )
 sky_parser.set_defaults(
     mode="skyline",

@@ -19,8 +19,9 @@ from scipy import signal
 from utils.SharedUtils import find_files
 from utils.Constants import SAVE_SKY
 
+mpl_logger = logging.getLogger('matplotlib')
+mpl_logger.setLevel(logging.INFO)
 # plt.rcParams['figure.figsize'] = (20, 4)
-plt.rcParams['image.origin'] = 'lower'
 
 # MARK: Skylines Class
 class Skylines:
@@ -35,7 +36,7 @@ class Skylines:
         The list of filenames to be processed.
     beam : str, optional
         The beam mode, by default "OE".
-    cont_plot : bool, optional
+    plot : bool, optional
         Flag indicating whether to plot the continuum, by default False.
     save_prefix : Path | None, optional
         The prefix for saving the data, by default None.
@@ -50,7 +51,7 @@ class Skylines:
         The list of fits file paths.
     beam : str
         The beam mode.
-    cont_plot : bool
+    can_plot : bool
         Flag indicating whether to plot the continuum.
     save_prefix : Path | None
         The prefix for saving the data.
@@ -90,7 +91,8 @@ class Skylines:
         data_dir: Path,
         filenames : list[str],
         beam: str = "OE",
-        cont_plot: bool = False,
+        transform: bool = False,
+        plot: bool = False,
         save_prefix: Path | None = None,
         **kwargs,
     ) -> None:
@@ -104,7 +106,7 @@ class Skylines:
         self._beam = None
         self.beam = beam
 
-        self.cont_plot = cont_plot
+        self.can_plot = plot
         self.save_prefix = save_prefix
         # Handle directory save name
         if self.save_prefix and self.save_prefix.is_dir():
@@ -112,19 +114,19 @@ class Skylines:
             logging.warning((
                 f"Correlation save name resolves to a directory. "
                 f"Saving under {self.save_prefix}"
-                ))
+            ))
 
         self.wav_unit = "$\AA$"
 
-        self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(
-            self.fits_list
-        )
-        self.corrWav, self.corrSpec = self.transform(
-            self.rawWav,
-            self.rawSpec
-        )
-        self.spec = np.median(self.corrSpec, axis=1)
-        self.normSpec = self.rmvCont(self.spec)
+        # self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(
+        #     self.fits_list
+        # )
+        # self.corrWav, self.corrSpec = self.transform(
+        #     self.rawWav,
+        #     self.rawSpec
+        # )
+        # self.spec = np.median(self.corrSpec, axis=1)
+        # self.normSpec = self.rmvCont(self.spec)
 
         logging.debug(self.__dict__)
         return
@@ -157,7 +159,7 @@ class Skylines:
 
         Returns
         -------
-        np.ndarray
+        spec, wav, bpm : np.ndarray
             The data from the file.
         
         """
@@ -170,7 +172,7 @@ class Skylines:
         return spec2D, wav2D, bpm2D
 
     # MARK: Transform spectra
-    def transform(self, wav_sol: np.ndarray, spec: np.ndarray) -> np.ndarray:
+    def transform(wav_sol: np.ndarray, spec: np.ndarray, resPlot: bool = False) -> np.ndarray:
         """
         Transforms the input wavelength and spectral data based on the given wavelength solution.
 
@@ -216,13 +218,13 @@ class Skylines:
                     spec[ext][row, :]
                 )
 
-            if self.cont_plot:
+            if resPlot:
                 # Plot results
                 fig, ax1 = plt.subplots(figsize=[20, 4])
                 ax1.imshow(cs[ext],
                         vmax=cs[0].mean() + 2*cs[0].std(),
-                        vmin=cs[0].mean() - 2*cs[0].std(),
-                        origin='lower')
+                        vmin=cs[0].mean() - 2*cs[0].std()
+                )
                 print(f"Average continuum of {'E' if ext else 'O'} at {np.median(np.median(cs[ext], axis=0)):4.3f}")
                 ax2 = ax1.twinx()
                 ax2.hlines(np.median(np.median(cs[ext], axis=0)), 0, cs[ext].shape[-1], colors='black')
@@ -243,13 +245,35 @@ class Skylines:
     # MARK: Process all listed images
     def process(self,) -> None:
         # Load data
-        fls = []
+        data = []
         for fl in self.fits_list:
-            # spec
-            pass
+            data.append(self.load_file(fl))
 
-        ## 2. Transform data, skip if filename starts with 't'
-        ## 3. Remove continuum
+        logging.warning(data[0][1][0].shape)
+
+        for i, fl in enumerate(data):
+            # Transform data, skip if filename starts with 't'
+            if not self.fits_list[i].name.startswith('t'):
+                    data[i][1], data[i][0] = self.transform(
+                        data[i][1],
+                        data[i][0],
+                        self.can_plot
+                    )
+                    _, data[i][2] = self.transform(
+                        data[i][1],
+                        data[i][2],
+                    )
+
+            # if self.can_plot:
+            #     plt.imshow(
+            #         data[i][0][0],
+            #         vmax=data[i][0][0].mean() + 2*data[i][0][0].std(),
+            #         vmin=data[i][0][0].mean() - 2*data[i][0][0].std()
+            #     )
+            #     plt.show()
+            
+        # Remove continuum
+
         ## 4. Identify skylines
         ## 5. Fit skylines
         ## 6. Return results

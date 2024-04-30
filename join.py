@@ -139,7 +139,7 @@ class Join:
         solutions_list: list[Path] = None,
         split_row: int = SPLIT_ROW,
         no_arc: bool = True,
-        save_prefix=None,
+        save_prefix: Path | None = None,
         verbose: int = 30,
         **kwargs,
     ) -> None:

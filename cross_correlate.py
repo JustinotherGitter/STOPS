@@ -24,6 +24,9 @@ from utils.Constants import SAVE_CORR
 
 OFFSET = 0.3
 
+mpl_logger = logging.getLogger('matplotlib')
+mpl_logger.setLevel(logging.INFO)
+
 # MARK: Correlate class
 class CrossCorrelate:
     """
@@ -43,7 +46,7 @@ class CrossCorrelate:
     cont_ord : int, optional
         The degree of a chebyshev to fit to the continuum.
         (The default is 11)
-    cont_plot : bool, optional
+    plot : bool, optional
         Decides whether or not the continuum fitting should be plotted
         (The default is False, so no continua plots are displayed)
     save_prefix : str, optional
@@ -62,7 +65,7 @@ class CrossCorrelate:
         The number of CCD's in the data. Used to split the CCD's if split_ccd is True.
     cont_ord : int
         The degree of the chebyshev to fit to the continuum.
-    cont_plot : bool
+    can_plot : bool
         Decides whether or not the continuum fitting should be plotted
     offset : int
         The amount the spectrum is shifted, mainly to test the effect of the cross correlation
@@ -132,7 +135,7 @@ class CrossCorrelate:
         beams: str = "OE",
         split_ccd: bool = True,
         cont_ord: int = 11,
-        cont_plot: bool = False,
+        plot: bool = False,
         offset: int = 0,
         save_prefix: Path | None = None,
         **kwargs
@@ -153,7 +156,7 @@ class CrossCorrelate:
                 self.ccds = sum(hdu["BPM"].data.sum(axis=1)[0] == 2)
 
         self.cont_ord = cont_ord
-        self.cont_plot = cont_plot
+        self.can_plot = plot
         self.offset = offset
         if offset != 0:
             logging.warning("'offset' is only for testing.")
@@ -375,7 +378,7 @@ class CrossCorrelate:
                         spec[ext, lb:ub],
                         wav[ext, lb:ub],
                         bpm[ext, lb:ub],
-                        self.cont_plot
+                        self.can_plot
                     )
 
                 # Invert BPM (and account for 2); zero bad pixels
@@ -424,7 +427,7 @@ class CrossCorrelate:
         ft_spec1 = np.fft.fft(signal1)
         ft_spec2 = np.fft.fft(signal2)
 
-        if self.cont_plot:
+        if self.can_plot:
             plt.plot(ft_spec1)
             plt.plot(ft_spec2)
             plt.show()

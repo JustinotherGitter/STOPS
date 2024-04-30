@@ -101,7 +101,7 @@ class Split:
         fits_list: list[str] = None,
         split_row: int = SPLIT_ROW,
         no_arc: bool = False,
-        save_prefix=None,
+        save_prefix: Path | None = None,
         **kwargs
     ) -> None:
         self.data_dir = data_dir
