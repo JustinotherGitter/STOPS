@@ -120,7 +120,7 @@ class Split:
         self.o_files = []
         self.e_files = []
 
-        logging.debug(self.__dict__)
+        logging.debug("__init__ - \n", self.__dict__)
         return
 
     # MARK: Split Files

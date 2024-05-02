@@ -109,6 +109,75 @@ split_join_args.add_argument(
 )
 
 
+# MARK: Correlate\Skylines Parent
+corr_sky_args = argparse.ArgumentParser(add_help=False)
+corr_sky_args.add_argument(
+    "filenames",
+    action="store",
+    nargs="+",
+    type=pu.parse_file,
+    help=(
+        "File name(s) of FITS file(s) to be processed."
+        "A minimum of one filename is required."
+    ),
+)
+corr_sky_args.add_argument(
+    "-b",
+    "--beams",
+    choices=["O", "E", "OE"],
+    type=str.upper,
+    default=PARSE['BEAMS'],
+    help=(
+        "Beams to process. "
+        f"Defaults to {PARSE['BEAMS']}, but "
+        "may be given 'O', 'E', or 'OE' to "
+        "determine which beams are processed."
+    ),
+)
+corr_sky_args.add_argument(
+    "-ccd",
+    "--split_ccd",
+    action="store_false",
+    help=(
+        "Flag to NOT split CCD's. "
+        "Recommended to leave off unless the chip gaps "
+        "have been removed from the data."
+    ),
+)
+corr_sky_args.add_argument(
+    "-c",
+    "--continuum_order",
+    type=int,
+    default=PARSE['CONT_ORD'],
+    dest="cont_ord",
+    help=(
+        "Order of continuum to remove from spectra. "
+        "Higher orders recommended to remove most variation, "
+        "leaving only significant features."
+    ),
+)
+corr_sky_args.add_argument(
+    "-p",
+    "--plot",
+    action="store_true",
+    help="Flag for additional plot outputs.",
+)
+corr_sky_args.add_argument(
+    "-s",
+    "--save_prefix",
+    action="store",
+    nargs="?",
+    type=lambda path: Path(path).expanduser().resolve(),
+    const=SAVE_CORR,
+    help=(
+        "Prefix used when saving plot. "
+        "Excluding flag does not save output plot, "
+        f"flag usage of option uses default prefix, "
+        "and a provided prefix overwrites default prefix."
+    ),
+)
+
+
 # MARK: Create subparser modes
 subparsers = parser.add_subparsers(
     dest="mode",
@@ -163,73 +232,9 @@ corr_parser = subparsers.add_parser(
     "correlate",
     aliases=["x"],
     help="Cross correlation mode",
+    parents=[corr_sky_args],
 )
-# 'children' correlate args here
-corr_parser.add_argument(
-    "filenames",
-    action="store",
-    nargs="+",
-    type=pu.parse_file,
-    help=(
-        "File name(s) of FITS file(s) to be correlated. "
-        "A minimum of one filename is required."
-    ),
-)
-corr_parser.add_argument(
-    "-b",
-    "--beams",
-    choices=["O", "E", "OE"],
-    type=str.upper,
-    default=PARSE['BEAMS'],
-    help=(
-        "Beams to correlate. "
-        f"Defaults to {PARSE['BEAMS']}, but "
-        "may be given 'O', 'E', or 'OE' to "
-        "determine which beams are plots."
-    ),
-)
-corr_parser.add_argument(
-    "-ccd",
-    "--split_ccd",
-    action="store_false",
-    help=(
-        "Flag to NOT split CCD's. "
-        "Recommended to leave off unless the chip gaps "
-        "have been removed from the data."
-    ),
-)
-corr_parser.add_argument(
-    "-c",
-    "--continuum_order",
-    type=int,
-    default=PARSE['CONT_ORD'],
-    dest="cont_ord",
-    help=(
-        "Order of continuum to remove from spectra. "
-        "Higher orders recommended to remove most variation, "
-        "leaving only significant features."
-    ),
-)
-corr_parser.add_argument(
-    "-p",
-    "--plot",
-    action="store_true",
-    help="Flag for additional plot outputs.",
-)
-corr_parser.add_argument(
-    "-s",
-    "--save_prefix",
-    action="store",
-    nargs="?",
-    type=lambda path: Path(path).expanduser().resolve(),
-    const=SAVE_CORR,
-    help=(
-        "Prefix used when saving plot. "
-        "Excluding flag does not save output plot, "
-        f"flag usage of option uses '{SAVE_CORR}' default prefix, "
-        "and a provided prefix overwrites default prefix."
-    ),
-)
+# 'children' join args here
 corr_parser.add_argument(
     "-o",
     "--offset",
@@ -254,62 +259,20 @@ sky_parser = subparsers.add_parser(
     "skylines",
     aliases=["sky"],
     help="Sky line check mode",
+    parents=[corr_sky_args],
 )
 # 'children' skyline args here
 sky_parser.add_argument(
-    "filenames",
-    action="store",
-    nargs="+",
-    type=pu.parse_file,
-    help=(
-        "File name(s) of FITS file(s) to be checked "
-        "using SALT's sky atlas. "
-        "A minimum of one filename is required."
-    ),
-)
-sky_parser.add_argument(
-    "-s",
-    "--save_prefix",
-    action="store",
-    nargs="?",
-    type=lambda path: Path(path).expanduser().resolve(),
-    const=SAVE_SKY,
-    help=(
-        "Prefix used when saving plot. "
-        "Excluding flag does not save output plot, "
-        f"flag usage of option uses '{SAVE_SKY}' default prefix, "
-        "and a provided prefix overwrites default prefix."
-    ),
-)
-sky_parser.add_argument(
-    "-b",
-    "--beams",
-    choices=["O", "E", "OE"],
-    type=str.upper,
-    default=PARSE['BEAMS'],
-    help=(
-        "Beam(s) for skyline checking. "
-        f"Defaults to {PARSE['BEAMS']}, but "
-        "may be given 'O', 'E', or 'OE' to "
-        "determine which beams are plots."
-    ),
-)
-sky_parser.add_argument(
     "-t",
     "--transform",
-    action="store_true",
+    action="store_false",
     help=(
-        "Flag to NOT transform images. "
+        "Flag to force transform images. "
         "Recommended to use only when input image(s) "
-        "are already transformed."
+        "are prefixed 't' but are not yet transformed."
     ),
 )
-sky_parser.add_argument(
-    "-p",
-    "--plot",
-    action="store_true",
-    help="Flag for additional plot outputs.",
-)
+# Change defaults here
 sky_parser.set_defaults(
     mode="skyline",
     func=Skylines,

@@ -162,7 +162,7 @@ class Join:
 
         self.verbose = verbose < 30
 
-        logging.debug(self.__dict__)
+        logging.debug("__init__ - \n", self.__dict__)
         return
 
     # MARK: Find 2D WAV Functions
