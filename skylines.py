@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
-from scipy import signal
+from scipy import signal, stats, interpolate
 
 from utils.SharedUtils import find_files, continuum
 from utils.Constants import SAVE_SKY
@@ -175,6 +175,38 @@ class Skylines:
             bpm2D = hdul["BPM"].data
         
         return spec2D, wav2D, bpm2D
+    
+    # MARK: Load Sky lines
+    def load_sky_lines(self, filename: Path | None = None) -> np.ndarray:
+        """
+        Loads the sky lines from the given file.
+
+        Parameters
+        ----------
+        filename : Path | None, optional
+            The path to the file to be loaded.
+            Defaults to loading the skylines from utils/sky.salt
+
+        Returns
+        -------
+        sky_lines : np.ndarray
+            The sky lines from the file.
+        
+        """
+        if not filename:
+            filename = Path(__file__).parent.resolve() / 'utils/sky.salt'
+
+        dtype = [('wav', float), ('flux', float)]
+        skylines = np.genfromtxt(filename, dtype=dtype, skip_header=3, skip_footer=1)
+
+        if self.can_plot:
+            plt.plot(skylines['wav'], skylines['flux'], label="Model peaks")
+            plt.xlabel(f'Wavelength {self.wav_unit}')
+            plt.ylabel('Relative intensities')
+            plt.legend()
+            plt.show()
+
+        return skylines
 
     # MARK: Transform spectra
     @staticmethod
@@ -204,28 +236,33 @@ class Skylines:
 
         for ext in range(exts):
             # Get middle row (to interpolate the rest of the rows to)
-            avg_max = [np.where(
-                spec[ext][:, col] == spec[ext][:, col].max()
-            )[0][0] for col in range(spec[ext].shape[1])]
+            avg_max = [np.where(spec[ext, :, col] == spec[ext, :, col].max())[0][0] for col in range(spec[ext].shape[1])]
             avg_max = np.sum(avg_max) // spec[ext].shape[1]
 
             # Get wavelength values at row with most trace
-            wav = wav_sol[ext][avg_max, :]
+            wav = wav_sol[ext, avg_max, :]
 
             # Correct extensions based on wavelength
             # Wavelength ext
-            cw[ext][:, :] = wav
+            cw[ext, :, :] = wav
 
+            # Spec ext
+            # for row in range(rows):
+            #     f_2d = interpolate.interp2d(
+            #         wav_sol[ext, row],
+            #         np.arange(rows),
+            #         spec[ext],
+            #     )
+            #     cs[ext] = f_2d(cw[ext, row], np.arange(rows))
             for row in range(rows):
-                # Spec extension
                 cs[ext][row, :] = np.interp(
                     wav,
                     wav_sol[ext][row, :],
                     spec[ext][row, :]
                 )
 
+            # Plot results
             if resPlot:
-                # Plot results
                 fig, ax1 = plt.subplots(figsize=[20, 4])
                 ax1.imshow(cs[ext],
                         vmax=cs[0].mean() + 2*cs[0].std(),
@@ -253,22 +290,32 @@ class Skylines:
         spec, wav, bpm = self.load_file(filename)
         spec *= ~bpm
 
+        # raise error if arc image
+        with pyfits.open(filename) as hdul:
+            if hdul[0].header['OBSTYPE'] == 'ARC':
+                logging.warning(f"ARC images, {filename}, contain no sky lines. File skipped.")
+                return
+
+
+        logging.debug(f"skylines - {filename.name} - spec: {spec.shape}")
+
+        # Mask trace
+        # TODO@JustinotherGitter: Add trace masking if median is not sufficient
+
         # Save initial feature widths
         spec1D_init = np.median(spec, axis=1)
 
         logging.debug(f"skylines - {filename.name} - spec: {spec1D_init.shape}")
-        logging.debug(f"skylines - {filename.name} - spec: {spec.shape}")
 
         # Transform data, skip if filename starts with 't'
         if self.must_transform or not filename.name.startswith('t'):
             wav, spec = self.transform(wav, spec, self.can_plot)
 
-        plt.plot(np.diff(wav[0]))
-        plt.show()
-
         # Convert to 1D spectra
-        spec1D = np.median(spec, axis=1)
-        # wav1D = np.median(wav, axis=1) # TODO@JustinotherGitter: Check if this is correct
+        spec1D = np.array(
+            [np.median(wav, axis=1), np.median(spec, axis=1)],
+            dtype=[('wav', float), ('spec', float)]
+        )
 
         # Remove continuum
         if self.cont_ord > 0:
@@ -280,16 +327,33 @@ class Skylines:
         if self.can_plot:
             # Plot transformed & normalized feature widths
             plt.plot(spec1D_init[0], label="O, initial")
+            plt.plot(spec1D['spec'][0], label="O spec")
             # plt.imshow(spec[0])
             # plt.show()
             plt.plot(spec1D_init[1], label="E, initial")
+            plt.plot(spec1D['spec'][1], label="E spec")
             # plt.imshow(spec[1])
             plt.legend()
             plt.show()
 
         # Find observed skylines
+        # skyline_cols, properties = find_peaks(sky_norm, prominence=0.2) # 1000 # prominence is basically the ylimit above which peaks should be found
+        skyline_cols, properties = signal.find_peaks(spec1D['spec'], prominence=1)
+        skyline_wavs = spec1D['wav', skyline_cols] # col_to_wav(coeff2, skyline_cols)
+
+        # plt.plot(wavs, sky_norm, label='Observed')
+        plt.plot(wavs, data.data, label='Observed')
+        plt.scatter(skyline_wavs, sky_norm[skyline_cols]);
+
+        plt.xlabel('Wavelength ($\AA$)')
+        plt.ylabel('Counts')
+        plt.legend()
+
+        for i in range(len(skyline_cols)):
+            print(f"{properties['right_bases'][i] - properties['left_bases'][i]:4d}\t{skyline_cols[i]:4d} - {wavs[skyline_cols][i]:.1f} - {properties['prominences'][i]:.2f}")
 
         # Load known skylines
+        skylines = self.load_sky_lines()
 
         # Find deviation of observed skylines from known skylines
 
@@ -302,6 +366,30 @@ class Skylines:
         plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
 
         # Save results
+        raise NotImplementedError
+        
+        return
+    
+    def show_frame(self, frame: np.ndarray, title: str = None, label: str = None, std: int = 1) -> None:
+        if not self.can_plot:
+            return
+        
+        fig, axs = plt.subplots(2, 1)
+        axs[0].set_title(title)
+        axs[0].imshow(
+            frame[0],
+            label=f"O beam - {label}",
+            vmin=frame[0].mean() - std * frame[0].std(),
+            vmax=frame[0].mean() + std * frame[0].std()
+        )
+        axs[1].imshow(
+            frame[1],
+            label=f"E beam - {label}",
+            vmin=frame[1].mean() - std * frame[0].std(),
+            vmax=frame[1].mean() + std * frame[0].std()
+        )
+        for ax in axs: ax.legend()
+        plt.show()
 
         return
             
