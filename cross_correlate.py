@@ -29,6 +29,9 @@ mpl_logger.setLevel(logging.INFO)
 
 # MARK: Correlate class
 class CrossCorrelate:
+
+    #----------corr0----------
+
     """
     Cross correlate allows for comparing the extensions of multiple
     FITS files, or comparing the O and E beams of a single FITS file.
@@ -127,6 +130,9 @@ class CrossCorrelate:
         SAVE_CORR
     
     """
+
+    #----------corr1----------
+
     # MARK: Correlate init
     def __init__(
         self,

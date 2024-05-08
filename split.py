@@ -21,6 +21,9 @@ from utils.Constants import SAVE_PREFIX, CROP_DEFAULT, SPLIT_ROW
 
 # MARK: Split Class
 class Split:
+
+    #----------split0----------
+
     """
     The `Split` class allows for the splitting of `polsalt` FITS files 
     based on the polarization beam. The FITS files must have basic 
@@ -94,6 +97,9 @@ class Split:
         SPLIT_ROW
     
     """
+
+    #----------split1----------
+
     # MARK: Split init
     def __init__(
         self,

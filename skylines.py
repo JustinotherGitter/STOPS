@@ -25,6 +25,9 @@ mpl_logger.setLevel(logging.INFO)
 
 # MARK: Skylines Class
 class Skylines:
+
+    #----------sky0----------
+
     """
     Class representing the Skylines object.
 
@@ -85,7 +88,10 @@ class Skylines:
     process(self) -> None:
         Placeholder method for processing the data.
     """
+    
+    #----------sky1----------
 
+    # MARK: Skylines init
     def __init__(
         self,
         data_dir: Path,
@@ -108,6 +114,7 @@ class Skylines:
         self._beams = None
         self.beams = beams
 
+        self.split_ccd = split_ccd
         self.cont_ord = cont_ord
         self.can_plot = plot
         self.must_transform = transform
@@ -152,30 +159,6 @@ class Skylines:
 
         return
     
-    # MARK: Load data
-    @staticmethod
-    def load_file(filename: Path) -> np.ndarray:
-        """
-        Loads the data from the given file.
-
-        Parameters
-        ----------
-        filename : Path
-            The path to the file to be loaded.
-
-        Returns
-        -------
-        spec, wav, bpm : np.ndarray
-            The data from the file.
-        
-        """
-        with pyfits.open(filename) as hdul:
-            spec2D = hdul["SCI"].data
-            wav2D = hdul["WAV"].data
-            bpm2D = hdul["BPM"].data
-        
-        return spec2D, wav2D, bpm2D
-    
     # MARK: Load Sky lines
     def load_sky_lines(self, filename: Path | None = None) -> np.ndarray:
         """
@@ -200,9 +183,10 @@ class Skylines:
         skylines = np.genfromtxt(filename, dtype=dtype, skip_header=3, skip_footer=1)
 
         if self.can_plot:
-            plt.plot(skylines['wav'], skylines['flux'], label="Model peaks")
+            plt.plot(skylines['wav'], skylines['flux'], 'x', label="Model peaks")
             plt.xlabel(f'Wavelength {self.wav_unit}')
             plt.ylabel('Relative intensities')
+            plt.title('Known sky lines')
             plt.legend()
             plt.show()
 
@@ -286,36 +270,72 @@ class Skylines:
 
     # MARK: Skylines
     def skylines(self, filename) -> None:
-        # Load data
-        spec, wav, bpm = self.load_file(filename)
-        spec *= ~bpm
-
         # raise error if arc image
         with pyfits.open(filename) as hdul:
             if hdul[0].header['OBSTYPE'] == 'ARC':
                 logging.warning(f"ARC images, {filename}, contain no sky lines. File skipped.")
                 return
 
+            # Load data
+            spec2D = hdul["SCI"].data
+            wav2D = hdul["WAV"].data
+            bpm2D = hdul["BPM"].data
 
-        logging.debug(f"skylines - {filename.name} - spec: {spec.shape}")
+        spec2D *= ~bpm2D
+
+        logging.debug(f"skylines - {filename.name} - spec: {spec2D.shape}")
 
         # Mask trace
-        # TODO@JustinotherGitter: Add trace masking if median is not sufficient
+        # TODO@JustinotherGitter: Add trace masking if median is insufficient
 
         # Save initial feature widths
-        spec1D_init = np.median(spec, axis=1)
+        # Mean to not filter out skewed features
+        spec1D_init = np.mean(spec2D, axis=1)
+        # Median to sort for most common wavelength
+        wav1D_init = np.median(wav2D, axis=1)
 
-        logging.debug(f"skylines - {filename.name} - spec: {spec1D_init.shape}")
+        peaks = [[] for _ in range(2)]
+        properties = [[] for _ in range(2)]
+
+        if self.can_plot: fig, axs = plt.subplots(2, 1)
+        for ext in range(2):
+            peaks[ext], properties[ext] = signal.find_peaks(
+                spec1D_init[ext],
+                prominence=0.5 * np.std(spec1D_init[ext]),
+                width=[1, 1000],
+                rel_height=0.3
+            )
+            peak_width = [properties[ext]['widths'], properties[ext]['width_heights'], properties[ext]['left_ips'], properties[ext]['right_ips']]
+
+            logging.debug(f"skylines - initial features {'E' if ext else 'O'}: {len(peaks[ext])}")
+            logging.debug(f"skylines - props: {properties[ext]}")
+
+            if self.can_plot:
+                axs[ext].plot(spec1D_init[ext], label=f"{'O' if ext else 'E'} initial")
+                axs[ext].vlines(peaks[ext], 0, np.mean(spec1D_init[ext]), color='r', label='Feature positions')
+                axs[ext].hlines(*peak_width[1:], color='g', label='Initial widths')
+                axs[ext].errorbar(
+                    peaks[ext],
+                    properties[ext]['prominences'],
+                    xerr=np.array([
+                        peaks[ext] - properties[ext]['left_ips'],
+                        properties[ext]['right_ips'] - peaks[ext]
+                        ]),
+                    fmt='x',
+                    label='Prominences'
+                )
+                
+        if self.can_plot:
+            for ax in axs: ax.legend()
+            plt.show()
 
         # Transform data, skip if filename starts with 't'
         if self.must_transform or not filename.name.startswith('t'):
-            wav, spec = self.transform(wav, spec, self.can_plot)
+            wav2D, spec2D = self.transform(wav2D, spec2D, self.can_plot)
 
         # Convert to 1D spectra
-        spec1D = np.array(
-            [np.median(wav, axis=1), np.median(spec, axis=1)],
-            dtype=[('wav', float), ('spec', float)]
-        )
+        wav1D = np.median(wav2D, axis=1)
+        spec1D = np.median(spec2D, axis=1)
 
         # Remove continuum
         if self.cont_ord > 0:
@@ -327,43 +347,48 @@ class Skylines:
         if self.can_plot:
             # Plot transformed & normalized feature widths
             plt.plot(spec1D_init[0], label="O, initial")
-            plt.plot(spec1D['spec'][0], label="O spec")
-            # plt.imshow(spec[0])
-            # plt.show()
             plt.plot(spec1D_init[1], label="E, initial")
-            plt.plot(spec1D['spec'][1], label="E spec")
-            # plt.imshow(spec[1])
+            plt.plot(spec1D[0], label="O spec")
+            plt.plot(spec1D[1], label="E spec")
             plt.legend()
             plt.show()
 
         # Find observed skylines
-        # skyline_cols, properties = find_peaks(sky_norm, prominence=0.2) # 1000 # prominence is basically the ylimit above which peaks should be found
-        skyline_cols, properties = signal.find_peaks(spec1D['spec'], prominence=1)
-        skyline_wavs = spec1D['wav', skyline_cols] # col_to_wav(coeff2, skyline_cols)
+        # skyline_cols, properties = find_peaks(sky_norm, prominence=0.2) # 1000
+        # prominence is basically the ylimit above which peaks should be found
+        skyline_cols, skyline_wavs, properties = [], [], []
+        for ext in range(2):
+            cols, prop = signal.find_peaks(wav1D[ext], spec1D[ext], prominence=1)
+            skyline_cols.append(cols)
+            properties.append(prop)
+            skyline_wavs.append(wav1D[ext, cols]) # col_to_wav(coeff2, skyline_cols)
 
-        # plt.plot(wavs, sky_norm, label='Observed')
-        plt.plot(wavs, data.data, label='Observed')
-        plt.scatter(skyline_wavs, sky_norm[skyline_cols]);
+            plt.plot(wav1D[ext, cols], cols, label='Observed')
+            plt.xlabel('Wavelength ($\AA$)')
+            plt.ylabel('Counts')
+            plt.legend()
+            plt.show()
 
-        plt.xlabel('Wavelength ($\AA$)')
-        plt.ylabel('Counts')
-        plt.legend()
+        for ext in range(2):
+            for i in range(len(skyline_cols[ext])):
+                logging.debug(("skylines - found features:\n"
+                    f"{properties[ext]['right_bases'][i] - properties[ext]['left_bases'][i]:4d}\t"
+                    f"{skyline_cols[ext][i]:4d} - {skyline_wavs[ext][i]:.1f} - {properties[ext]['prominences'][i]:.2f}"
+                ))
 
-        for i in range(len(skyline_cols)):
-            print(f"{properties['right_bases'][i] - properties['left_bases'][i]:4d}\t{skyline_cols[i]:4d} - {wavs[skyline_cols][i]:.1f} - {properties['prominences'][i]:.2f}")
 
-        # Load known skylines
-        skylines = self.load_sky_lines()
+        # Return results
+        return
+    
+    def plot(self, ) -> None:
+        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
 
         # Find deviation of observed skylines from known skylines
 
         # Find feature / initial feature widths
 
-        # Return results
-        return
-    
-    def plot(self) -> None:
-        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
+        # Load known skylines
+        skylines = self.load_sky_lines()
 
         # Save results
         raise NotImplementedError
@@ -417,6 +442,3 @@ def main(argv) -> None:
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-
-# Class flow

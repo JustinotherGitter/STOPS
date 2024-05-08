@@ -27,6 +27,9 @@ from utils.Constants import DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
 
 # MARK: Join Class
 class Join:
+
+    #----------join0----------
+
     """
     The `Join` class allows for the joining of previously 
     split files and the appending of an external wavelength 
@@ -130,6 +133,9 @@ class Join:
     .. [2] https://zenodo.org/records/1482019
     
     """
+
+    #----------join1----------
+
     # MARK: Join init
     def __init__(
         self,
