@@ -7,6 +7,9 @@ __pycache__/
 # Ignore test data
 test_data/
 
+#Ignore tests
+tests/
+
 # Ignore any 'Masters' entries
 Masters/
 Masters.zip

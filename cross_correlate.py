@@ -120,8 +120,9 @@ class CrossCorrelate:
 
     See Also
     --------
-    scipy.signal.correlate
-        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html#scipy.signal.correlate
+    scipy
+        https://docs.scipy.org/doc/scipy/reference/generated/
+        correlation: scipy.signal.correlate.html
 
         
     Notes

@@ -330,10 +330,10 @@ class Join:
         --------
         IRAF - `fitcoords` task
             https://iraf.net/irafdocs/formats/fitcoords.php,
-        numpy.polynomial.chebyshev.chebgrid2d
-            https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebgrid2d.html
-        numpy.polynomial.legendre.leggrid2d
-            https://numpy.org/doc/stable/reference/generated/numpy.polynomial.legendre.leggrid2d.html
+        numpy 2D grid functions
+            https://numpy.org/doc/stable/reference/generated/numpy
+            Chebyshev: + '.polynomial.chebyshev.chebgrid2d.html'
+            Legendre: + '.polynomial.legendre.leggrid2d.html'
 
         """
         # Create empty wavelength appended hdu list
@@ -442,7 +442,7 @@ class Join:
                 whdu["SCI"].data[num],
                 # contrast=CR_PARAMS['CR_CONTRAST'],
                 # threshold=CR_PARAMS['CR_THRESHOLD'],
-                # neighbor_threshold=CR_PARAMS['CR_NEIGHBOUR_THRESHOLD'],
+                # neighbor_threshold=CR_PARAMS['CR_NEIGH_THRESH'],
                 # effective_gain=CR_PARAMS['GAIN'],
                 # background=CR_PARAMS['BACKGROUND'],
                 readnoise=CR_PARAMS['READNOISE'],
