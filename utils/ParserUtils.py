@@ -65,10 +65,10 @@ def parse_logfile(logfile: str) -> str | None:
     # Return valid 'LOGFILE.log'
     logfile = logfile.upper()
     if logfile.endswith(".LOG"):
-        fname = fname[:-4]
-    fname += ".log"
+        logfile = logfile[:-4]
+    logfile += ".log"
 
-    return fname
+    return logfile
 
 
 # MARK: Flatten

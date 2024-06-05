@@ -86,26 +86,19 @@ class CrossCorrelate:
     
     Methods
     -------
-    load_file(filename: Path)
-        -> tuple[np.ndarray, np.ndarray, np.ndarray]
+    load_file(filename: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]
         Loads the data from a FITS file.
-    get_bounds(bpm: np.ndarray)
-        -> np.ndarray
+    get_bounds(bpm: np.ndarray) -> np.ndarray
         Finds the bounds for the CCD regions.
-    remove_cont(spec: list, wav: list, bpm: list, plotCont: bool)
-        -> None
+    remove_cont(spec: list, wav: list, bpm: list, plot_cont: bool) -> None
         Removes the continuum from the data.
-    correlate(filename1: Path, filename2: Path | None = None)
-        -> None
+    correlate(filename1: Path, filename2: Path | None = None) -> None
         Cross correlates the data.
-    FTCS(filename1: Path, filename2: Path | None = None)
-        -> None
+    FTCS(filename1: Path, filename2: Path | None = None) -> None
         Cross correlates the data using the Fourier Transform.
-    plot(spec, wav, bpm, corrdb, lagsdb)
-        -> None
+    plot(spec, wav, bpm, corrdb, lagsdb) -> None
         Plots the data.
-    process()
-        -> None
+    process() -> None
         Processes the data.
     
     Other Parameters
@@ -167,6 +160,10 @@ class CrossCorrelate:
         self.offset = offset
         if offset != 0:
             logging.warning("'offset' is only for testing.")
+
+            errMsg = "Offset removed after finalizing testing."
+            logging.error(errMsg)
+            raise ValueError(errMsg)
             # # Add an offset to the spectra to test cross correlation
             # self.spec1 = np.insert(
             #     self.spec1, [0] * offset, self.spec1[:, :offset], axis=-1
@@ -286,8 +283,8 @@ class CrossCorrelate:
         spec: list,
         wav: list,
         bpm: list,
-        plotCont: bool
-    ) -> None:
+        plot_cont: bool
+    ) -> np.ndarray:
         """
         Remove the continuum from the data.
 
@@ -299,7 +296,7 @@ class CrossCorrelate:
             The wavelength of the spectrum.
         bpm : list
             The bad pixel mask.
-        plotCont : bool
+        plot_cont : bool
             Decides whether or not the continuum fitting should be plotted
         
         Returns
@@ -315,7 +312,7 @@ class CrossCorrelate:
             wav[okwav],
             spec[okwav],
             deg=self.cont_ord,
-            plot=plotCont,
+            plot=plot_cont,
         )
 
         # Normalise spectra
@@ -505,7 +502,7 @@ class CrossCorrelate:
         for ax in axs[0, :]:
             ax.set_xlabel("Signal Lag")
         for ax in axs[1:, 0]:
-            ax.set_ylabel(f"Norm. Intensity\n(Counts)")
+            ax.set_ylabel("Norm. Intensity\n(Counts)")
         for ax in axs[-1, :]:
             ax.set_xlabel(f"Wavelength ({self.wav_unit})")
         for ax in axs.flatten():

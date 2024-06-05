@@ -1,14 +1,13 @@
 # Ignore byte-compiled files
 __pycache__/
 
-# Ignore local vscode settings
+# Ignore local editor settings
 .vscode/
+.idea/
+venv/
 
-# Ignore test data
-test_data/
-
-#Ignore tests
-tests/
+# Ignore test data and tests
+test*/
 
 # Ignore any 'Masters' entries
 Masters/

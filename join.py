@@ -31,9 +31,8 @@ class Join:
     #----------join0----------
 
     """
-    The `Join` class allows for the joining of previously 
-    split files and the appending of an external wavelength 
-    solution to the `polsalt` FITS file format.
+    The `Join` class allows for the joining of previously split files and the
+    appending of an external wavelength solution in the `polsalt` FITS file format.
 
     Parameters
     ----------
@@ -79,25 +78,20 @@ class Join:
 
     Methods
     -------
-    get_solutions(wavlist: list | None, prefix: str = "fc")
-        -> (fc_files, custom): tuple[list[str], bool]
+    get_solutions(wavlist: list | None, prefix: str = "fc") -> (fc_files, custom): tuple[list[str], bool]
         Parse `solutions_list` and return valid solution files and if they are non-`IRAF` solutions.
-    parse_solution(fc_file: str, xshape: int, yshape: int)
-        -> tuple[dict[str, int], np.ndarray]
+    parse_solution(fc_file: str, xshape: int, yshape: int) -> tuple[dict[str, int], np.ndarray]
         Loads the wavelength solution file and parses keywords necessary for creating the wavelength extension.
-    join_file(file: os.PathLike)
-        -> None
+    join_file(file: os.PathLike) -> None
         Joins the files, 
         attaches the wavelength solutions, 
         performs cosmic ray cleaning, 
         masks the extension, 
         and checks cropping performed in `Split`.
         Writes the FITS file in a `polsalt` valid format.
-    check_crop(hdu: pyfits.HDUList, o_file: str, e_file: str)
-        -> int
+    check_crop(hdu: pyfits.HDUList, o_file: str, e_file: str) -> int
         Opens the split `O`- and `E`-beam FITS files and returns the amount of cropping that was performed.
-    process()
-        -> None
+    process() -> None
         Calls `join_file` on each file in `fits_list` for automation.
 
     
@@ -112,24 +106,20 @@ class Join:
     Notes
     -----
     Constants Imported (See utils.Constants):
-        DATADIR
-        SAVE_PREFIX
-        SPLIT_ROW
-        CR_PARAMS
+        DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
 
-    Custom wavelength solutions must be formatted as:
-        `x`,
-        `y`,
-        *coefficients...
-    where the solutions are of order (`x` by `y`) and contain x*y coefficients.
-    The name of the custom wavelength solution file must contain either "cheb" or "leg"
-    for Chebychev or Legendre wavelength solutions, respectively.
+    Custom wavelength solutions must be formatted containing:
+        `x`, `y`, *coefficients...
+    where a solution are of order (`x` by `y`) and must contain x*y coefficients,
+    all separated by newlines. The name of the custom wavelength solution file
+    must contain either "cheb" or "leg" for Chebychev or Legendre
+    wavelength solutions, respectively.
 
     Cosmic ray rejection is performed using lacosmic [1]_ implemented in ccdproc via astroscrappy [2]_.
 
     References
     ----------
-    .. [1] van Dokkum 2001, PASP, 113, 789, 1420 (article : http://adsabs.harvard.edu/abs/2001PASP..113.1420V)
+    .. [1] van Dokkum 2001, PASP, 113, 789, 1420 (article : https://adsabs.harvard.edu/abs/2001PASP..113.1420V)
     .. [2] https://zenodo.org/records/1482019
     
     """
