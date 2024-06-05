@@ -113,8 +113,11 @@ class Skylines:
         )
         self._beams = None
         self.beams = beams
-
-        self.split_ccd = split_ccd
+        self.ccds = 1
+        if split_ccd:
+            # See cross_correlate for initial implementation
+            self.ccds = 3
+        
         self.cont_ord = cont_ord
         self.can_plot = plot
         self.must_transform = transform
@@ -204,6 +207,8 @@ class Skylines:
             The wavelength solution.
         spec : np.ndarray
             The spectral data.
+        resPlot : bool, optional
+            Flag indicating whether to plot the results, by default False.
 
         Returns
         -------
@@ -380,6 +385,7 @@ class Skylines:
         # Return results
         return
     
+    # MARK: Plot
     def plot(self, ) -> None:
         plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
 
@@ -390,8 +396,75 @@ class Skylines:
         # Load known skylines
         skylines = self.load_sky_lines()
 
+        # Plot results
+        fig, axs = plt.subplots(3, self.ccds, sharex='row')
+
+        if self.ccds == 1:
+            # Convert axs to a 2D array
+            axs = np.swapaxes(np.atleast_2d(axs), 0, 1)
+        
+        # Split skylines into ccds
+        split_sky = np.array_split(skylines, self.ccds)
+
+        for ccd in range(self.ccds):
+            # spectrum
+            axs[0, ccd].plot(
+                split_sky[ccd]['wav'],
+                split_sky[ccd]['flux'] / np.max(skylines['flux']),
+                color='C4',
+                label="\\textsc{salt} sky lines",
+            )
+
+            # # OE intensity
+            # if self.beams == 'OE':
+            #     for ext in range(2):
+            #         axs[0, ccd].plot(
+            #             split_sky[ccd]['wav'],
+            #             split_sky[ccd]['flux'] / np.max(skylines['flux']) + 0.5 * (ext + 1),
+            #             # color='C4',
+            #             label=f"{'E' if ext else 'O'}",
+            #         )
+            
+            # # O or E intensity
+            # else:
+            #     for i, im in enumerate(images):
+            #         axs[0, ccd].plot(
+            #             im[ccd]['wav'],
+            #             im[ccd]['flux'] / np.max(im['flux']) + 0.5,
+            #             # color='C4',
+            #             label=f"${self.beams}_{i + 1}$",
+            #         )
+
+
+            # for ext in range(2):
+            #     logging.debug(f"fl-{ext}: {wav[ext, lb]}:{wav[ext, ub - 1]}")
+
+            #     axs[1, ccd].plot(
+            #         wav[ext, lb:ub],
+            #         spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1) + OFFSET * ext,
+            #         label=(
+            #             f"${self.beams if self.beams != 'OE' else self.beams[ext]}"
+            #             f"_{ext + 1 if self.beams != 'OE' else 1}$"
+            #             f"{(' (+' + str(OFFSET * ext) + ')') if ext > 0 else ''}"
+            #         ),
+            #     )
+
+        axs[0, 0].set_ylabel("Norm. Intensity\n(Counts)")
+        axs[1, 0].set_ylabel("Closest Deviation\n($\sigma$)")
+        axs[2, 0].set_ylabel("$W / W_{i}$")
+        for ax in axs[-1, :]:
+            ax.set_xlabel(f"Wavelength ({self.wav_unit})")
+        for ax in axs[:, -1]:
+            ax.legend()
+
+        # plt.tight_layout()
+        # fig1 = plt.gcf()
+        # DPI = fig1.get_dpi()
+        # fig1.set_size_inches(700.0/float(DPI), 250.0/float(DPI))
+        plt.show()
+
         # Save results
-        raise NotImplementedError
+        fig.savefig(fname=self.save_prefix)
         
         return
     
