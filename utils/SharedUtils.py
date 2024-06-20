@@ -11,6 +11,10 @@ from numpy.polynomial import chebyshev
 from astropy.io import fits as pyfits
 from scipy import signal
 
+# MARK: Is Arc
+def is_arc(file: Path) -> bool:
+    return pyfits.open(file)["PRIMARY"].header["OBJECT"] == "ARC"
+
 
 # MARK: Find files
 def find_files(
@@ -18,6 +22,7 @@ def find_files(
     filenames: list[str] | None = None,
     prefix: str = "mxgbp",
     ext: str = "fits",
+    sep_arc: bool = False,
 ) -> list[Path]:
     """
     Checks if `filenames` in `data_dir` are valid,
@@ -52,14 +57,18 @@ def find_files(
         `prefix`*.`ext` regex search are found in the directory.
     """
     valid = []
+    valid_arcs = []
     errMsg = ""
+
     # Search for files in `data_dir`
     if filenames is None:
-        valid = [
-            fl
-            for fl in os.listdir(data_dir)
-            if fl.startswith(prefix) and fl.endswith(ext)
-        ]
+        for fl in os.listdir(data_dir):
+            if fl.startswith(prefix) and fl.endswith(ext):
+                if is_arc(data_dir / fl) and sep_arc:
+                    valid_arcs.append(fl)
+                else:
+                    valid.append(fl)
+
         errMsg = f"No files matching '{prefix}*.{ext}' found in '{data_dir}'."
 
     else:
@@ -70,7 +79,10 @@ def find_files(
                     f"File '{fl}' not found in '{data_dir}'. Dropped from filenames."
                 )
             else:
-                valid.append(fl)
+                if is_arc(data_dir / fl) and sep_arc:
+                    valid_arcs.append(fl)
+                else:
+                    valid.append(fl)
 
         errMsg = f"`{data_dir}` contains no files listed in `filenames`."
 
@@ -79,6 +91,10 @@ def find_files(
         logging.error(errMsg)
         raise FileNotFoundError(errMsg)
 
+    if sep_arc and valid_arcs:
+        logging.debug(f"find_files - {valid} and {valid_arcs}")
+        return [Path(data_dir) / fl for fl in valid], [Path(data_dir) / fl for fl in valid_arcs]
+    
     logging.debug(f"find_files will parse and return: {valid}")
     return [Path(data_dir) / fl for fl in valid]
 

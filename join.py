@@ -165,7 +165,8 @@ class Join:
     def get_solutions(
         self,
         wavlist: list[str] | None,
-        prefix: str = "fc"
+        prefix: str = "fc",
+        reverse: bool = True,
     ) -> tuple[list[str], bool]:
         """
         Get the list of wavelength solution files.
@@ -203,8 +204,11 @@ class Join:
                 )
                 logging.error(msg)
                 raise FileNotFoundError(msg)
+            
+            sols = {i: j for i, j in zip(['O', 'E'], sorted(ws, reverse=reverse))}
+            logging.debug(f"get_solutions - Found {sols} in {self.database}")
 
-            return (sorted(ws, reverse=True), False)
+            return (sorted(ws, reverse=reverse), False)
 
         # Custom solution
         if len(wavlist) >= 2:
@@ -221,7 +225,10 @@ class Join:
                     logging.error(msg)
                     raise FileNotFoundError(msg)
 
-            return (sorted(wavlist, reverse=True), True) 
+            sols = {i: j for i, j in zip(['O', 'E'], sorted(wavlist, reverse=reverse))}
+            logging.debug(f"get_solutions - Found {sols} in {self.database}")
+
+            return (sorted(wavlist, reverse=reverse), True) 
 
     # MARK: Parse 2D WAV Function
     def parse_solution(
@@ -397,26 +404,26 @@ class Join:
         )
 
         for num, fname in enumerate(self.fc_files):
-            pars, chebvals = self.parse_solution(
+            params, coeffs = self.parse_solution(
                 fname,
                 x_shape,
                 y_shape
             )
 
-            if pars["function"] == 1:  # Function type (1 = chebyshev)
+            if params["function"] == 1:  # Function type (1 = chebyshev)
                 # Set wavelength extention values to function
                 whdu["WAV"].data[num] = chebgrid2d(
-                    x=np.linspace(-1, 1, pars["ymax"]),
-                    y=np.linspace(-1, 1, pars["xmax"]),
-                    c=chebvals,
+                    x=np.linspace(-1, 1, params["ymax"]),
+                    y=np.linspace(-1, 1, params["xmax"]),
+                    c=coeffs,
                 )
 
-            elif pars["function"] == 2:  # Function type (2 = legendre)
+            elif params["function"] == 2:  # Function type (2 = legendre)
                 # Set wavelength extention values to function
                 whdu["WAV"].data[num] = leggrid2d(
-                    x=np.linspace(-1, 1, pars["ymax"]),
-                    y=np.linspace(-1, 1, pars["xmax"]),
-                    c=chebvals,
+                    x=np.linspace(-1, 1, params["ymax"]),
+                    y=np.linspace(-1, 1, params["xmax"]),
+                    c=coeffs,
                 )
 
             else:

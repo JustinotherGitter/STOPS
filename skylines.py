@@ -17,10 +17,13 @@ from astropy.io import fits as pyfits
 from scipy import signal, stats, interpolate
 
 from utils.SharedUtils import find_files, continuum
-from utils.Constants import SAVE_SKY
+from utils.Constants import SAVE_SKY, FIND_PEAK_PARAMS, ARC_FILE
 
+# print([logging.getLogger(name) for name in logging.root.manager.loggerDict])
 mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.INFO)
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
 # plt.rcParams['figure.figsize'] = (20, 4)
 
 # MARK: Skylines Class
@@ -83,8 +86,6 @@ class Skylines:
         Transforms the input wavelength and spectral data based on the given wavelength solution.
     rmvCont(self) -> np.ndarray:
         Removes the continuum from the spectrum.
-    skylines(self) -> None:
-        Placeholder method for processing skylines.
     process(self) -> None:
         Placeholder method for processing the data.
     """
@@ -105,11 +106,12 @@ class Skylines:
         **kwargs,
     ) -> None:
         self.data_dir = data_dir
-        self.fits_list = find_files(
+        self.fits_list, self.arc_list = find_files(
             data_dir=self.data_dir,
             filenames=filenames,
             prefix="wmxgbp", # t[o|e]beam
             ext="fits",
+            sep_arc=True,
         )
         self._beams = None
         self.beams = beams
@@ -131,19 +133,12 @@ class Skylines:
                 f"Saving under {self.save_prefix}"
             ))
 
+        self.max_difference = 6
+
         self.wav_unit = "$\AA$"
 
-        # self.rawWav, self.rawSpec, self.rawBpm = self.checkLoad(
-        #     self.fits_list
-        # )
-        # self.corrWav, self.corrSpec = self.transform(
-        #     self.rawWav,
-        #     self.rawSpec
-        # )
-        # self.spec = np.median(self.corrSpec, axis=1)
-        # self.normSpec = self.rmvCont(self.spec)
-
         logging.debug("__init__ - \n", self.__dict__)
+
         return
     
     # MARK: Beams property
@@ -162,349 +157,461 @@ class Skylines:
 
         return
     
-    # MARK: Load Sky lines
-    def load_sky_lines(self, filename: Path | None = None) -> np.ndarray:
+    # MARK: Find Peaks
+    def find_peaks(
+        self,
+        spec: np.ndarray,
+        axis: int | None = None,
+        min_height: float = 0.5,
+        **kwargs,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
-        Loads the sky lines from the given file.
+        Finds the peaks in the given spectral data.
+
+        Parameters
+        ----------
+        spec : np.ndarray
+            The spectral data.
+        bpm : np.ndarray
+            The bad pixel mask.
+        min_height : float, optional
+            The minimum height of the peaks, by default 0.5.
+        rel_height : float, optional
+            The relative height of the peaks, by default 0.05.
+
+        Returns
+        -------
+        peaks, properties : tuple[np.ndarray, dict]
+            The peaks and their properties.
+
+        """
+        peaks = []
+        props = []
+
+        for ext in range(len(self.beams)):
+            if axis is None:
+                row_mean = spec[ext]
+            else:
+                row_mean = np.mean(spec[ext], axis=axis)
+
+            peak, property = signal.find_peaks(
+                row_mean,
+                prominence=min_height * np.max(row_mean),
+                width=0,
+                **kwargs,
+            )
+            peaks.append(peak)
+            props.append(property)
+
+        if self.can_plot:
+            fig, axs = plt.subplots(2, 1)
+            for ext in range(len(self.beams)):
+                axs[ext].plot(row_mean, label=f"{'E' if ext else 'O'}")
+                axs[ext].plot(peak, row_mean[peak], "x", label=f"{'E' if ext else 'O'} peaks")
+                axs[ext].legend()
+                plt.show()
+
+        logging.debug(f"find_peaks - peaks: {[len(i) for i in peaks]}")
+        logging.debug(f"find_peaks - props: {[key for key in props[0].keys()]}")
+
+        return peaks, props
+    
+    # MARK: Min. of Diff. Matrix
+    @staticmethod
+    def min_diff_matrix(A: np.ndarray, B: np.ndarray, max_diff: int = 100) -> np.ndarray:
+        """
+        Find the minimum difference between the elements of two arrays.
+
+        Parameters
+        ----------
+        A : np.ndarray
+            The first 1d array.
+        B : np.ndarray
+            The second 1d array.
+        max_diff : int, optional
+            The maximum difference allowed, by default -1.
+        
+        Returns
+        -------
+        A : np.ndarray (len(A))
+            The elements of the first array.
+        min_vals : np.ndarray (len(A))
+            The minimum difference between the elements of the two arrays.
+        min_idxs : np.ndarray (len(A))
+            The indices of the minimum difference between the elements of the two arrays.
+        
+        """
+        # Compute the difference matrix using transpose
+        diff = np.abs(A - B[:, np.newaxis])
+        
+        # Find the minimum value in each row (A) of `diff`
+        min_vals = np.min(diff, axis=0)
+        min_idxs = np.argmin(diff, axis=0)
+        # TODO: Recalculate min_val after selecting best min_val and removing the corresponding row/column
+
+        logging.debug(f"min_diff_matrix - min_vals: {np.round(min_vals, 2)}")
+        logging.debug(f"min_diff_matrix - min_idxs: {min_idxs}")
+
+        max_mask = min_vals <= max_diff
+        
+        return A[max_mask], min_vals[max_mask], min_idxs[max_mask]
+
+    # MARK: Load File Data
+    def load_file_data(
+        self,
+        filename: Path
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Loads the data from the given file.
+
+        Parameters
+        ----------
+        filename : Path
+            The path to the file to be loaded.
+
+        Returns
+        -------
+        spec, wav, bpm : tuple[np.ndarray, np.ndarray, np.ndarray]
+            The wavelength, spectral, and bad pixel mask data.
+
+        """
+        # Load data from self.beams extension
+        with pyfits.open(filename) as hdul:
+            exts = [0, 1] if len(self.beams) == 2 else 0 + self.beams == 'E'
+            spec2D = np.atleast_3d(hdul["SCI"].data[exts])
+            wav2D = np.atleast_3d(hdul["WAV"].data[exts])
+            bpm2D = np.atleast_3d(hdul["BPM"].data[exts].astype(bool))
+
+            logging.debug(f"load_file_data - {filename.name} - shape: {spec2D.shape}")
+
+            return spec2D, wav2D, bpm2D
+
+    # MARK: Load Sky or Arc Lines
+    def load_lines(
+            self,
+            filename: Path | None = None,
+            dtype: list[tuple] = [('wav', float), ('flux', float)],
+            skip_header: int = 3,
+            skip_footer: int = 1
+        ) -> np.ndarray:
+        """
+        Loads the sky or arc lines from the given file.
 
         Parameters
         ----------
         filename : Path | None, optional
             The path to the file to be loaded.
-            Defaults to loading the skylines from utils/sky.salt
+            Defaults to loading the skylines from `utils/sky.salt`
 
         Returns
         -------
-        sky_lines : np.ndarray
+        sky_lines : np.ndarray['wav', 'flux']
             The sky lines from the file.
         
         """
-        if not filename:
+        usecols = None
+        if filename:
+            filename = Path(__file__).parent.resolve() / filename
+            usecols = (0, 1)
+        else:
             filename = Path(__file__).parent.resolve() / 'utils/sky.salt'
 
-        dtype = [('wav', float), ('flux', float)]
-        skylines = np.genfromtxt(filename, dtype=dtype, skip_header=3, skip_footer=1)
+        lines = np.genfromtxt(filename, dtype=dtype, skip_header=skip_header, skip_footer=skip_footer, usecols=usecols)
 
-        if self.can_plot:
-            plt.plot(skylines['wav'], skylines['flux'], 'x', label="Model peaks")
-            plt.xlabel(f'Wavelength {self.wav_unit}')
-            plt.ylabel('Relative intensities')
-            plt.title('Known sky lines')
-            plt.legend()
-            plt.show()
+        logging.debug(f"load_lines - {filename.name} - shape: {lines.shape}")
 
-        return skylines
+        return lines
 
-    # MARK: Transform spectra
-    @staticmethod
-    def transform(wav_sol: np.ndarray, spec: np.ndarray, resPlot: bool = False) -> np.ndarray:
+    # MARK: Mask Traces
+    def mask_traces(
+            self,
+            spec: np.ndarray,
+            bpm: np.ndarray,
+            max_traces: int = 1,
+            tr_pad: int = 5,
+            bg_margin: int = 10,
+            lr_margins: list[int] = [10, 10],
+            h_min: float = 0.5,
+            h_rel: float = 1 - 0.05,
+        ) -> np.ndarray:
+        """
+        Masks the traces in the bad pixel mask.
+
+        Parameters
+        ----------
+        spec : np.ndarray
+            The spectral data.
+        bpm : np.ndarray
+            The bad pixel mask.
+
+        Returns
+        -------
+        bpm : np.ndarray
+            The updated bad pixel mask.
+
+        """
+        # Base mask
+        bpm[:, :bg_margin] = True
+        bpm[:, -bg_margin:] = True
+        bpm[:, :, :lr_margins[0]] = True
+        bpm[:, :, -lr_margins[1]:] = True
+
+        # Get the traces
+        traces, tr_props = self.find_peaks(spec, axis=1, min_height=h_min, rel_height=h_rel)
+
+        for ext in range(len(self.beams)):
+            # Mask the traces
+            for i in range(len(traces[ext][:max_traces])):
+                lb = max(0, int(tr_props[ext]['left_ips'][i]) - tr_pad)
+                ub = min(spec.shape[-1], int(tr_props[ext]['right_ips'][i]) + tr_pad)
+                bpm[ext, lb : ub] = True
+                # TODO: Relocate targets after initial masking
+
+        return bpm
+
+    # MARK: Transform Spectra
+    def transform(
+        self,
+        spec: np.ndarray,
+        wav_sol: np.ndarray,
+        row_max: int | None = None,
+        resPlot: bool = False,
+    ) -> np.ndarray:
         """
         Transforms the input wavelength and spectral data based on the given wavelength solution.
 
         Parameters
         ----------
-        wav_sol : np.ndarray
-            The wavelength solution.
         spec : np.ndarray
             The spectral data.
+        wav_sol : np.ndarray
+            The wavelength solution.
         resPlot : bool, optional
             Flag indicating whether to plot the results, by default False.
 
         Returns
         -------
-        wav, spec : np.ndarray
+        spec, wav : np.ndarray
             The transformed wavelength and spectral data.
 
         """
         # Create arrays to return
-        cw = np.zeros_like(wav_sol)
-        cs = np.zeros_like(wav_sol)
+        cs = np.zeros_like(spec)
+        cw = np.zeros_like(wav_sol.mean(axis=1))
 
-        exts = cw.shape[0]
-        rows = cw.shape[1]
+        for ext in range(len(self.beams)):
 
-        for ext in range(exts):
-            # Get middle row (to interpolate the rest of the rows to)
-            avg_max = [np.where(spec[ext, :, col] == spec[ext, :, col].max())[0][0] for col in range(spec[ext].shape[1])]
-            avg_max = np.sum(avg_max) // spec[ext].shape[1]
-
-            # Get wavelength values at row with most trace
-            wav = wav_sol[ext, avg_max, :]
+            if row_max:
+                avg_max = row_max
+            else:
+                # Get middle row (to interpolate the rest of the rows to)
+                avg_max = np.mean(spec[ext], axis=1).argmax()
 
             # Correct extensions based on wavelength
-            # Wavelength ext
-            cw[ext, :, :] = wav
+            # Get wavelength values at row with most trace
+            cw[ext] = wav_sol[ext, avg_max]
 
             # Spec ext
-            # for row in range(rows):
-            #     f_2d = interpolate.interp2d(
-            #         wav_sol[ext, row],
-            #         np.arange(rows),
-            #         spec[ext],
-            #     )
-            #     cs[ext] = f_2d(cw[ext, row], np.arange(rows))
-            for row in range(rows):
-                cs[ext][row, :] = np.interp(
-                    wav,
-                    wav_sol[ext][row, :],
-                    spec[ext][row, :]
+            for row in range(cs.shape[1]):
+                cs[ext, row] = np.interp(
+                    cw[ext],
+                    wav_sol[ext, row],
+                    spec[ext, row]
                 )
-
-            # Plot results
-            if resPlot:
-                fig, ax1 = plt.subplots(figsize=[20, 4])
-                ax1.imshow(cs[ext],
-                        vmax=cs[0].mean() + 2*cs[0].std(),
-                        vmin=cs[0].mean() - 2*cs[0].std()
-                )
-                print(f"Average continuum of {'E' if ext else 'O'} at {np.median(np.median(cs[ext], axis=0)):4.3f}")
-                ax2 = ax1.twinx()
-                ax2.hlines(np.median(np.median(cs[ext], axis=0)), 0, cs[ext].shape[-1], colors='black')
-                ax2.plot(cs[ext].mean(axis=0), "k", label=f"mean {'E' if ext else 'O'}")
-                ax2.plot(np.median(cs[ext], axis=0), "r", label=f"median {'E' if ext else 'O'}")
-                ax2.legend()
-                plt.show()
-
-        return cw, cs
-
-    # MARK: Remove continuum
-    def remove_cont(self, spec: np.ndarray, wav: np.ndarray) -> np.ndarray:
-        ctm = continuum(wav, spec, deg=self.cont_ord, plot=self.can_plot)
-
-        return self.spec / ctm - 1
-
-    # MARK: Skylines
-    def skylines(self, filename) -> None:
-        # raise error if arc image
-        with pyfits.open(filename) as hdul:
-            if hdul[0].header['OBSTYPE'] == 'ARC':
-                logging.warning(f"ARC images, {filename}, contain no sky lines. File skipped.")
-                return
-
-            # Load data
-            spec2D = hdul["SCI"].data
-            wav2D = hdul["WAV"].data
-            bpm2D = hdul["BPM"].data
-
-        spec2D *= ~bpm2D
-
-        logging.debug(f"skylines - {filename.name} - spec: {spec2D.shape}")
-
-        # Mask trace
-        # TODO@JustinotherGitter: Add trace masking if median is insufficient
-
-        # Save initial feature widths
-        # Mean to not filter out skewed features
-        spec1D_init = np.mean(spec2D, axis=1)
-        # Median to sort for most common wavelength
-        wav1D_init = np.median(wav2D, axis=1)
-
-        peaks = [[] for _ in range(2)]
-        properties = [[] for _ in range(2)]
-
-        if self.can_plot: fig, axs = plt.subplots(2, 1)
-        for ext in range(2):
-            peaks[ext], properties[ext] = signal.find_peaks(
-                spec1D_init[ext],
-                prominence=0.5 * np.std(spec1D_init[ext]),
-                width=[1, 1000],
-                rel_height=0.3
-            )
-            peak_width = [properties[ext]['widths'], properties[ext]['width_heights'], properties[ext]['left_ips'], properties[ext]['right_ips']]
-
-            logging.debug(f"skylines - initial features {'E' if ext else 'O'}: {len(peaks[ext])}")
-            logging.debug(f"skylines - props: {properties[ext]}")
-
-            if self.can_plot:
-                axs[ext].plot(spec1D_init[ext], label=f"{'O' if ext else 'E'} initial")
-                axs[ext].vlines(peaks[ext], 0, np.mean(spec1D_init[ext]), color='r', label='Feature positions')
-                axs[ext].hlines(*peak_width[1:], color='g', label='Initial widths')
-                axs[ext].errorbar(
-                    peaks[ext],
-                    properties[ext]['prominences'],
-                    xerr=np.array([
-                        peaks[ext] - properties[ext]['left_ips'],
-                        properties[ext]['right_ips'] - peaks[ext]
-                        ]),
-                    fmt='x',
-                    label='Prominences'
-                )
-                
-        if self.can_plot:
-            for ax in axs: ax.legend()
-            plt.show()
-
-        # Transform data, skip if filename starts with 't'
-        if self.must_transform or not filename.name.startswith('t'):
-            wav2D, spec2D = self.transform(wav2D, spec2D, self.can_plot)
-
-        # Convert to 1D spectra
-        wav1D = np.median(wav2D, axis=1)
-        spec1D = np.median(spec2D, axis=1)
-
-        # Remove continuum
-        if self.cont_ord > 0:
-            for ext in range(2):
-                # spec1D_init[ext] = self.remove_cont(spec1D_init[ext], wav1D[ext])
-                # spec1D[ext] = self.remove_cont(spec1D[ext], wav1D[ext])
-                pass
-
-        if self.can_plot:
-            # Plot transformed & normalized feature widths
-            plt.plot(spec1D_init[0], label="O, initial")
-            plt.plot(spec1D_init[1], label="E, initial")
-            plt.plot(spec1D[0], label="O spec")
-            plt.plot(spec1D[1], label="E spec")
-            plt.legend()
-            plt.show()
-
-        # Find observed skylines
-        # skyline_cols, properties = find_peaks(sky_norm, prominence=0.2) # 1000
-        # prominence is basically the ylimit above which peaks should be found
-        skyline_cols, skyline_wavs, properties = [], [], []
-        for ext in range(2):
-            cols, prop = signal.find_peaks(wav1D[ext], spec1D[ext], prominence=1)
-            skyline_cols.append(cols)
-            properties.append(prop)
-            skyline_wavs.append(wav1D[ext, cols]) # col_to_wav(coeff2, skyline_cols)
-
-            plt.plot(wav1D[ext, cols], cols, label='Observed')
-            plt.xlabel('Wavelength ($\AA$)')
-            plt.ylabel('Counts')
-            plt.legend()
-            plt.show()
-
-        for ext in range(2):
-            for i in range(len(skyline_cols[ext])):
-                logging.debug(("skylines - found features:\n"
-                    f"{properties[ext]['right_bases'][i] - properties[ext]['left_bases'][i]:4d}\t"
-                    f"{skyline_cols[ext][i]:4d} - {skyline_wavs[ext][i]:.1f} - {properties[ext]['prominences'][i]:.2f}"
-                ))
-
-
-        # Return results
-        return
-    
-    # MARK: Plot
-    def plot(self, ) -> None:
-        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
-
-        # Find deviation of observed skylines from known skylines
-
-        # Find feature / initial feature widths
-
-        # Load known skylines
-        skylines = self.load_sky_lines()
+                # f_2d = interpolate.interp2d(
+                #     wav_sol[ext, row],
+                #     np.arange(rows),
+                #     spec[ext],
+                # )
+                # cs[ext] = f_2d(cw[ext, row], np.arange(rows))
 
         # Plot results
-        fig, axs = plt.subplots(3, self.ccds, sharex='row')
+        if resPlot:
+            fig, axs = plt.subplots(2, 1, figsize=[20, 4])
+            for ext in range(len(self.beams)):
+                axs[ext].imshow(
+                    cs[ext],
+                    vmax=cs[ext].mean() + 2*cs[ext].std(),
+                    vmin=cs[ext].mean() - 2*cs[ext].std()
+                )
 
+                logging.debug(f"{'E' if ext else 'O'} Average continuum = {np.median(np.median(cs[ext], axis=0)):4.3f}")
+
+                axx = axs[ext].twinx()
+                axx.hlines(np.median(np.median(cs[ext], axis=0)), 0, cs[ext].shape[-1], colors='black')
+                axx.plot(cs[ext].mean(axis=0), "k", label=f"mean {'E' if ext else 'O'}")
+                axx.plot(np.median(cs[ext], axis=0), "r", label=f"median {'E' if ext else 'O'}")
+                axx.legend()
+            plt.show()
+
+        return cs, cw
+    
+    # MARK: Plot
+    def plot(
+            self,
+            spectra,
+            wavelengths,
+            peaks,
+            properties,
+            arc: bool = False,
+        ) -> None:
+        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
+
+        def norm(x):
+            return (x - np.min(x)) / (np.max(x) - np.min(x))
+
+        # Load known lines
+        if arc:
+            lines = self.load_lines(filename=f'utils/RSS_arc_files/{ARC_FILE}')
+        else:
+            lines = self.load_lines()
+
+        ok = (lines['wav'] > wavelengths[1][0][0].min()) & (lines['wav'] < wavelengths[1][0][0].max())
+        lines = lines[ok]
+
+
+        # Create plot for results
+        fig, axs = plt.subplots(2, self.ccds, sharex='col')
+
+        # Handle ccd count
         if self.ccds == 1:
             # Convert axs to a 2D array
             axs = np.swapaxes(np.atleast_2d(axs), 0, 1)
-        
-        # Split skylines into ccds
-        split_sky = np.array_split(skylines, self.ccds)
+        # # Split lines into ccds
+        # split_sky = np.array_split(lines, self.ccds)
 
         for ccd in range(self.ccds):
+
+            for fl in range(len(self.arc_list if arc else self.fits_list)):
+
+                # set color cycle
+                color=next(axs[0, 0]._get_lines.prop_cycler)['color']
+
+                for ext in range(len(self.beams)):
+                    # spectrum (transformed)
+                    axs[0, ccd].plot(
+                        wavelengths[1][fl][ext],
+                        norm(spectra[1][fl][ext]) + 0.1 * ext + 0.3 * fl,
+                        color=color,
+                        linestyle='dashed' if ext else 'solid',
+                        label = f"${{{self.beams[ext]}}}_{{{fl + 1}}}^{{+ {0.1*ext + 0.3*fl:.1f}}}$",
+                    )
+
+                    # deviation
+                    sky_wavs, dev, peak_idx = self.min_diff_matrix(
+                        lines['wav'],
+                        wavelengths[1][fl][ext][peaks[1][fl][ext]],
+                        max_diff=self.max_difference,
+                    )
+
+                    sky_i, i_dev, i_idx = self.min_diff_matrix(
+                        lines['wav'],
+                        wavelengths[0][fl][ext][peaks[0][fl][ext]],
+                        max_diff=self.max_difference,
+                    )
+
+                    # width/initial width
+                    width = properties[1][fl][ext]['widths'][peak_idx]
+                    # width_i = np.ones_like(lines['wav']) * 1000
+                    # width_i[i_idx] = properties[0][fl][ext]['widths'][i_idx]
+                    # width_ratio = width / width_i
+
+                    axs[1, ccd].errorbar(
+                        sky_wavs,
+                        dev,
+                        # yerr=[width_ratio * 0, width_ratio],
+                        fmt="." if ext else "x",
+                        alpha=0.8,
+                        color=color,
+                        # markeredgecolor='white',
+                        # markeredgewidth=0.5,
+                        label=f"$\\sigma_{{{self.beams[ext]}}}^{{{fl + 1}}}$",
+                    )
+
             # spectrum
             axs[0, ccd].plot(
-                split_sky[ccd]['wav'],
-                split_sky[ccd]['flux'] / np.max(skylines['flux']),
+                lines['wav'],
+                lines['flux'] * 0,
+                'x',
                 color='C4',
-                label="\\textsc{salt} sky lines",
+                label="\\textsc{salt} Model",
             )
-
-            # # OE intensity
-            # if self.beams == 'OE':
-            #     for ext in range(2):
-            #         axs[0, ccd].plot(
-            #             split_sky[ccd]['wav'],
-            #             split_sky[ccd]['flux'] / np.max(skylines['flux']) + 0.5 * (ext + 1),
-            #             # color='C4',
-            #             label=f"{'E' if ext else 'O'}",
-            #         )
-            
-            # # O or E intensity
-            # else:
-            #     for i, im in enumerate(images):
-            #         axs[0, ccd].plot(
-            #             im[ccd]['wav'],
-            #             im[ccd]['flux'] / np.max(im['flux']) + 0.5,
-            #             # color='C4',
-            #             label=f"${self.beams}_{i + 1}$",
-            #         )
-
-
-            # for ext in range(2):
-            #     logging.debug(f"fl-{ext}: {wav[ext, lb]}:{wav[ext, ub - 1]}")
-
-            #     axs[1, ccd].plot(
-            #         wav[ext, lb:ub],
-            #         spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1) + OFFSET * ext,
-            #         label=(
-            #             f"${self.beams if self.beams != 'OE' else self.beams[ext]}"
-            #             f"_{ext + 1 if self.beams != 'OE' else 1}$"
-            #             f"{(' (+' + str(OFFSET * ext) + ')') if ext > 0 else ''}"
-            #         ),
-            #     )
+            for x in lines['wav']: axs[0, ccd].axvline(x, ls='dashed', c='0.7')
 
         axs[0, 0].set_ylabel("Norm. Intensity\n(Counts)")
         axs[1, 0].set_ylabel("Closest Deviation\n($\sigma$)")
-        axs[2, 0].set_ylabel("$W / W_{i}$")
-        for ax in axs[-1, :]:
-            ax.set_xlabel(f"Wavelength ({self.wav_unit})")
-        for ax in axs[:, -1]:
-            ax.legend()
+        for ax in axs[:, 0]:
+            ax.legend(loc='upper left', ncol=len(self.beams))
+        for ax in axs[1, :]:
+            ax.grid(axis='y')
+        
+        fig.add_subplot(111, frameon=False)
+        # hide tick and tick label of the big axis
+        plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+        plt.xlabel(f"Wavelength ({self.wav_unit})")
 
         # plt.tight_layout()
-        # fig1 = plt.gcf()
-        # DPI = fig1.get_dpi()
-        # fig1.set_size_inches(700.0/float(DPI), 250.0/float(DPI))
         plt.show()
 
         # Save results
-        fig.savefig(fname=self.save_prefix)
+        if self.save_prefix:
+            fig.savefig(fname=self.save_prefix)
         
-        return
-    
-    def show_frame(self, frame: np.ndarray, title: str = None, label: str = None, std: int = 1) -> None:
-        if not self.can_plot:
-            return
-        
-        fig, axs = plt.subplots(2, 1)
-        axs[0].set_title(title)
-        axs[0].imshow(
-            frame[0],
-            label=f"O beam - {label}",
-            vmin=frame[0].mean() - std * frame[0].std(),
-            vmax=frame[0].mean() + std * frame[0].std()
-        )
-        axs[1].imshow(
-            frame[1],
-            label=f"E beam - {label}",
-            vmin=frame[1].mean() - std * frame[0].std(),
-            vmax=frame[1].mean() + std * frame[0].std()
-        )
-        for ax in axs: ax.legend()
-        plt.show()
-
-        return
-            
+        return   
 
     # MARK: Process all listed images
-    def process(self,) -> None:
-        if self.beams == 'OE':
-            for fl in self.fits_list:
-                logging.info(f"'OE' skylines of {fl}.")
-                self.skylines(fl)
-                self.plot()
+    def process(self, arc: bool=False) -> None:
+        files = self.fits_list
+        if arc:
+            files = self.arc_list
+        
+        logging.info(f"Processing '{self.beams}' lines.")
 
-        if self.beams in ['O', 'E']:
-            for fl in self.fits_list:
-                logging.info(f"{self.beams} skylines of {fl}.")
-                self.skylines(fl)
-                self.plot()
+        spectra = [[], []]
+        wavs = [[], []]
+        peaks = [[], []]
+        peak_props = [[], []]
+
+        for fl in files:
+            # Load data
+            spec2d, wav2d, bpm2d = self.load_file_data(fl)
+
+            # Mask traces in BPM
+            bpm2d = self.mask_traces(spec2d, bpm2d, max_traces=0, bg_margin=15, h_min=0.05)
+            m_spec2d = np.ma.masked_array(spec2d, mask=bpm2d) # spec2d
+            m_wav2d = np.ma.masked_array(wav2d, mask=bpm2d) # wav2d
+
+            # Initial spectra
+            spec_i = np.mean(m_spec2d, axis=-2)
+            wav_i = np.mean(m_wav2d, axis=-2)
+
+            # Transform data
+            t_spec2d, t_wav = self.transform(m_spec2d, m_wav2d, resPlot=self.can_plot)
+
+            # Final spectra
+            spec_f = np.mean(t_spec2d, axis=-2)
+            wav_f = t_wav
+
+            # Find peaks
+            peaks_i, props_i = self.find_peaks(spec_i, **FIND_PEAK_PARAMS)
+            peaks_f, props_f = self.find_peaks(spec_f, **FIND_PEAK_PARAMS)
+
+            spectra[0].append([*spec_i])
+            spectra[1].append([*spec_f])
+            wavs[0].append([*wav_i])
+            wavs[1].append([*wav_f])
+            peaks[0].append([*peaks_i])
+            peaks[1].append([*peaks_f])
+            peak_props[0].append([*props_i])
+            peak_props[1].append([*props_f])
+
+        # Plot results
+        self.plot(spectra, wavs, peaks, peak_props, arc=arc)
+
+        if arc:
+            return
+        elif self.arc_list:
+            self.process(arc=True)
 
         return
 

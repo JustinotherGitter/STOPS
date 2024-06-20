@@ -9,8 +9,8 @@ import os
 SPLIT_ROW = 517
 
 # Naming convention for FITS prefixes, Note order: O first, E second. Always.
-PREFIX = ["obeam", "ebeam"]
-SAVE_PREFIX = {"beam": PREFIX, "arc": ["oarc", "earc"]}
+PREFIX = ["beamo", "beame"]
+SAVE_PREFIX = {"beam": PREFIX, "arc": ["arco", "arce"]}
 SAVE_CORR = "corr"
 SAVE_SKY = "sky"
 
@@ -49,3 +49,10 @@ CR_PARAMS = {
     "BACKGROUND": None,
 }
 
+FIND_PEAK_PARAMS = {
+    'rel_height': 0.05,
+    'min_height': 0.01,
+    'distance': 2,
+}
+
+ARC_FILE = 'Argon_lores.txt' # 'NeAr.txt' | 'ThAr.txt' | 'Xe.txt'

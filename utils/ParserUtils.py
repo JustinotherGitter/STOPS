@@ -78,6 +78,7 @@ def flatten(filelist: list) -> list[Path]:
     for item in filelist:
         if type(item) != list:
             flatlist.append(item)
+            continue
 
         for subitem in item:
             flatlist.append(subitem)
