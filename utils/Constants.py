@@ -50,7 +50,7 @@ CR_PARAMS = {
 }
 
 FIND_PEAK_PARAMS = {
-    'rel_height': 0.05,
+    'rel_height': 0.5,
     'min_height': 0.01,
     'distance': 2,
 }

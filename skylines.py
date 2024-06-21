@@ -133,7 +133,7 @@ class Skylines:
                 f"Saving under {self.save_prefix}"
             ))
 
-        self.max_difference = 6
+        self.max_difference = 5
 
         self.wav_unit = "$\AA$"
 
@@ -282,7 +282,7 @@ class Skylines:
             wav2D = np.atleast_3d(hdul["WAV"].data[exts])
             bpm2D = np.atleast_3d(hdul["BPM"].data[exts].astype(bool))
 
-            logging.debug(f"load_file_data - {filename.name} - shape: {spec2D.shape}")
+            logging.info(f"load_file_data - {filename.name} - shape: {spec2D.shape}")
 
             return spec2D, wav2D, bpm2D
 
@@ -367,6 +367,8 @@ class Skylines:
                 bpm[ext, lb : ub] = True
                 # TODO: Relocate targets after initial masking
 
+        logging.info(f"mask_traces - {min(max_traces, len(traces))} of {len(traces)} traces masked.")
+
         return bpm
 
     # MARK: Transform Spectra
@@ -444,6 +446,8 @@ class Skylines:
                 axx.legend()
             plt.show()
 
+        logging.info(f"transform - {cs.shape} transformed.")
+
         return cs, cw
     
     # MARK: Plot
@@ -466,35 +470,36 @@ class Skylines:
         else:
             lines = self.load_lines()
 
-        ok = (lines['wav'] > wavelengths[1][0][0].min()) & (lines['wav'] < wavelengths[1][0][0].max())
-        lines = lines[ok]
+        lines = lines[
+            (lines['wav'] > wavelengths[1][0][0].min()) &
+            (lines['wav'] < wavelengths[1][0][0].max())
+        ]
 
 
         # Create plot for results
-        fig, axs = plt.subplots(2, self.ccds, sharex='col')
+        fig, axs = plt.subplots(2, self.ccds, sharex='col', sharey='row')
 
-        # Handle ccd count
+        # Convert axs to a 2D array if ccd count is 1
         if self.ccds == 1:
-            # Convert axs to a 2D array
             axs = np.swapaxes(np.atleast_2d(axs), 0, 1)
-        # # Split lines into ccds
-        # split_sky = np.array_split(lines, self.ccds)
 
-        for ccd in range(self.ccds):
+        for fl in range(len(self.arc_list if arc else self.fits_list)):
 
-            for fl in range(len(self.arc_list if arc else self.fits_list)):
+            # set color cycle
+            color=next(axs[0, 0]._get_lines.prop_cycler)['color']
 
-                # set color cycle
-                color=next(axs[0, 0]._get_lines.prop_cycler)['color']
+            for ext in range(len(self.beams)):
+                    
+                for ccd in range(self.ccds):
 
-                for ext in range(len(self.beams)):
                     # spectrum (transformed)
+                    ccdrange = spectra[1][fl][ext].shape[-1] // self.ccds
                     axs[0, ccd].plot(
-                        wavelengths[1][fl][ext],
-                        norm(spectra[1][fl][ext]) + 0.1 * ext + 0.3 * fl,
+                        wavelengths[1][fl][ext][ccdrange*ccd:ccdrange*(ccd+1)],
+                        norm(spectra[1][fl][ext][ccdrange*ccd:ccdrange*(ccd+1)]) + 0.1 * ext + 0.3 * fl,
                         color=color,
                         linestyle='dashed' if ext else 'solid',
-                        label = f"${{{self.beams[ext]}}}_{{{fl + 1}}}^{{+ {0.1*ext + 0.3*fl:.1f}}}$",
+                        label = f"${{{self.beams[ext]}}}_{{{fl + 1}}}^{{+ {0.1*ext + 0.3*fl:.1f}}}$" if ccd == 0 else None,
                     )
 
                     # deviation
@@ -504,53 +509,77 @@ class Skylines:
                         max_diff=self.max_difference,
                     )
 
+                    # width/initial width
+                    width = properties[1][fl][ext]['widths'][peak_idx]
+                    width_i = np.zeros_like(width)
+
                     sky_i, i_dev, i_idx = self.min_diff_matrix(
                         lines['wav'],
                         wavelengths[0][fl][ext][peaks[0][fl][ext]],
                         max_diff=self.max_difference,
                     )
 
-                    # width/initial width
-                    width = properties[1][fl][ext]['widths'][peak_idx]
-                    # width_i = np.ones_like(lines['wav']) * 1000
-                    # width_i[i_idx] = properties[0][fl][ext]['widths'][i_idx]
-                    # width_ratio = width / width_i
+                    width_i = np.array([
+                        properties[0][fl][ext]['widths'][np.where(wav == sky_i)[0][0]]
+                        if wav in sky_i else 1000
+                        for wav in sky_wavs
+                    ])
+                    width_ratio = (width / width_i) - 1
+                    width_ratio[width_ratio < 0] = 0
 
+                    ylolims = width_ratio > self.max_difference
+                    width_ratio[width_ratio > self.max_difference] = self.max_difference // 2
+
+                    ok = np.where(
+                        (sky_wavs >= wavelengths[1][fl][ext].data[ccdrange*ccd]) &
+                        (sky_wavs <= wavelengths[1][fl][ext].data[ccdrange*(ccd+1)])
+                    )
                     axs[1, ccd].errorbar(
-                        sky_wavs,
-                        dev,
-                        # yerr=[width_ratio * 0, width_ratio],
+                        sky_wavs[ok],
+                        dev.data[ok],
+                        yerr=(width_ratio[ok] * 0, width_ratio[ok]),
+                        lolims=ylolims[ok],
                         fmt="." if ext else "x",
                         alpha=0.8,
                         color=color,
                         # markeredgecolor='white',
                         # markeredgewidth=0.5,
-                        label=f"$\\sigma_{{{self.beams[ext]}}}^{{{fl + 1}}}$",
+                        # label=f"${self.beams[ext]}_{{{fl + 1}}}$",
                     )
 
+                    logging.debug(f"plot - RMS: {np.sqrt(np.mean(dev**2)):2.3f}")
+
+        for ccd in range(self.ccds):
             # spectrum
+            ok = np.where(
+                (lines['wav'] >= wavelengths[1][fl][0].data[ccdrange*ccd]) &
+                (lines['wav'] <= wavelengths[1][fl][0].data[ccdrange*(ccd+1)])
+            )
             axs[0, ccd].plot(
-                lines['wav'],
-                lines['flux'] * 0,
+                lines['wav'][ok],
+                lines['flux'][ok] * 0,
                 'x',
                 color='C4',
-                label="\\textsc{salt} Model",
+                label="\\textsc{salt} Model" if ccd == 0 else None,
             )
-            for x in lines['wav']: axs[0, ccd].axvline(x, ls='dashed', c='0.7')
+            for x in lines['wav'][ok]: axs[0, ccd].axvline(x, ls='dashed', c='0.7')
 
         axs[0, 0].set_ylabel("Norm. Intensity\n(Counts)")
-        axs[1, 0].set_ylabel("Closest Deviation\n($\sigma$)")
-        for ax in axs[:, 0]:
-            ax.legend(loc='upper left', ncol=len(self.beams))
+        axs[1, 0].set_ylabel("Closest Deviation\n($|\sigma|$)")
+        # for ax in axs[:, 0]:
+        #     ax.legend(loc='upper left', ncols=(fl + 1) * (ext + 1) + 1)
+        leg = fig.legend(loc='center', ncol=len(spectra[0]) * len(spectra[0][0]) + 1, columnspacing=0.5)
+        leg.set_draggable(True)
         for ax in axs[1, :]:
             ax.grid(axis='y')
         
-        fig.add_subplot(111, frameon=False)
-        # hide tick and tick label of the big axis
-        plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-        plt.xlabel(f"Wavelength ({self.wav_unit})")
+        # fig.add_subplot(111, frameon=False)
+        # # hide tick and tick label of the big axis
+        # plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+        axs[-1, 0 if self.ccds == 1 else 1].set_xlabel(f"Wavelength ({self.wav_unit})")
 
         # plt.tight_layout()
+        
         plt.show()
 
         # Save results
