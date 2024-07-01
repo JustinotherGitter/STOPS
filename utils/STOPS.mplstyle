@@ -1,57 +1,68 @@
-# https://matplotlib.org/stable/users/explain/customizing.html#customizing-with-style-sheets
+# https://matplotlib.org/stable/users/explain/customizing.html
 
-figure.figsize:		    14, 5  # 7.48, 5.27
-figure.subplot.left:    0.07   # the left side of the subplots of the figure
-figure.subplot.bottom:  0.09   # the bottom of the subplots of the figure
-figure.subplot.right:   0.98   # the right side of the subplots of the figure
-figure.subplot.top:     0.99   # the top of the subplots of the figure
-figure.subplot.wspace:  0.02   # the amount of width reserved for space between subplots,
-                               # expressed as a fraction of the average axis width
-figure.subplot.hspace:  0.4    # the amount of height reserved for space between subplots,
-                               # expressed as a fraction of the average axis height
-text.usetex:            True
+figure.figsize:		    6.28, 3.48 # Set figsize to Latex `\the\textwidth`
+
+savefig.format:         pdf     # file format of the output
+savefig.dpi:            900     # resolution of the output in dpi
+savefig.transparent:    True    # save figures with a transparent background
+
+# https://loading.io/asset/736323
+axes.prop_cycle:        cycler('color', ['313e80', '5ce7a8', '0f4636', '00c3ff', '006bd3', '179b7d'])
+
+figure.subplot.left:    0.08    # the left side of the subplots of the figure
+figure.subplot.bottom:  0.09    # the bottom of the subplots of the figure
+figure.subplot.right:   0.99    # the right side of the subplots of the figure
+figure.subplot.top:     0.99    # the top of the subplots of the figure
+figure.subplot.wspace:  0.02    # the width between subplots of the figure,
+                                # (a fraction of the average axis width)
+figure.subplot.hspace:  0.2     # the height between subplots of the figure,
+                                # (a fraction of the average axis height)
+figure.raise_window :   True    # Open GUI window in front when calling show().
+# figure.constrained_layout.use: True # No overlaps between subplots
+
+# https://matplotlib.org/stable/users/explain/text/usetex.html
+text.usetex:            True    # use LaTeX to render all text
 font.family:            serif
 # font.sans-serif:        Arial
-axes.xmargin:           .05
-axes.ymargin:           .05
-lines.markersize:       6
-lines.linewidth:        0.8
+axes.xmargin:           0.05    # x margin.  See `axes.Axes.margins`
+axes.ymargin:           0.05    # y margin See `axes.Axes.margins`
+lines.markersize:       3       # markersize, in points
+lines.linewidth:        0.6     # line width, in points
 
-axes.labelsize:		    12
-axes.titlesize: 	    14
-font.size:              12
-legend.fontsize:        12
-legend.title_fontsize:  14
+# https://www.sascha-frank.com/latex-font-size.html
+font.size:              12      # controls default text sizes
+axes.titlesize: 	    medium  # fontsize of the axes title
+axes.labelsize:		    x-small # fontsize of the x any y labels
+legend.title_fontsize:  x-small # fontsize of the legend title
+legend.fontsize:        xx-small # fontsize of the legend
+xtick.labelsize:        xx-small # fontsize of the x-tick labels
+ytick.labelsize:        xx-small # fontsize of the y-tick labels
+legend.markerscale:     0.5     # the relative size of legend markers
 
-image.origin:           lower 
+image.origin:           lower   # origin of the image, default is upper
 
-# figure.dpi: 		500
-# savefig.dpi:      500
-axes.labelweight:	bold
-axes.labelpad: 		2
-axes.grid:          False
-axes.grid.which:    major
-axes.grid.axis:     x
-axes.prop_cycle:    cycler('color', ['313e80', '5ce7a8', '0f4636', '00c3ff', '006bd3', '179b7d'])                           
-grid.linestyle:     --
+axes.labelweight:	    bold
+axes.labelpad: 		    2
+axes.grid:              False
+axes.grid.which:        major
+axes.grid.axis:         x
+grid.linestyle:         --
 
-xtick.labelsize:    12
-ytick.labelsize:    12
-xtick.bottom:       True
-xtick.top:          True
-ytick.left:         True
-ytick.right:        True
-xtick.major.size:   6
-xtick.minor.size:   4
-ytick.major.size:   6
-ytick.minor.size:   4
-xtick.major.width:  1.0
-xtick.minor.width:  0.5
-ytick.major.width:  1.0
-ytick.minor.width:  0.5
-xtick.major.pad:    6
-xtick.minor.pad:    6
-ytick.major.pad:    6
-ytick.minor.pad:    6
-ytick.direction:    in
-xtick.direction:    in
+xtick.bottom:           True
+xtick.top:              True
+ytick.left:             True
+ytick.right:            True
+xtick.major.size:       6
+xtick.minor.size:       4
+ytick.major.size:       6
+ytick.minor.size:       4
+xtick.major.width:      1.0
+xtick.minor.width:      0.5
+ytick.major.width:      1.0
+ytick.minor.width:      0.5
+xtick.major.pad:        3
+xtick.minor.pad:        3
+ytick.major.pad:        3
+ytick.minor.pad:        3
+ytick.direction:        in
+xtick.direction:        in
