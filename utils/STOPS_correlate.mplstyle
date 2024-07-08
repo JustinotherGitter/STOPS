@@ -1,0 +1,6 @@
+figure.subplot.left:    0.10
+figure.subplot.bottom:  0.09
+figure.subplot.wspace:  0.10
+figure.subplot.hspace:  0.22
+
+axes.ymargin:           0.10    # y margin See `axes.Axes.margins`

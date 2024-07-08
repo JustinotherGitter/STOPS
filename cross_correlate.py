@@ -465,7 +465,10 @@ class CrossCorrelate:
         None
 
         """
-        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
+        plt.style.use([
+            Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle',
+            Path(__file__).parent.resolve() / 'utils/STOPS_correlate.mplstyle'
+        ])
         bounds = self.get_bounds(bpm)
 
         fig, axs = plt.subplots(2, self.ccds, sharey="row")
@@ -499,14 +502,14 @@ class CrossCorrelate:
                 )
 
         axs[0, 0].set_ylabel("Normalised Correlation\n(\%)")
-        for ax in axs[0, :]:
-            ax.set_xlabel("Signal Lag")
         for ax in axs[1:, 0]:
-            ax.set_ylabel("Norm. Intensity\n(Counts)")
-        for ax in axs[-1, :]:
-            ax.set_xlabel(f"Wavelength ({self.wav_unit})")
+            ax.set_ylabel("Normalised Intensity\n(Counts)")
+        xcol = int(self.ccds != 1)
+        axs[0, xcol].set_xlabel(f"Signal Lag ({self.wav_unit})")
+        axs[-1, xcol].set_xlabel(f"Wavelength ({self.wav_unit})")
         for ax in axs.flatten():
-            ax.legend()
+            leg = ax.legend()
+            leg.set_draggable(True)
 
         # plt.tight_layout()
         # fig1 = plt.gcf()

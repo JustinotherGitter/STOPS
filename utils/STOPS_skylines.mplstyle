@@ -1,0 +1,4 @@
+figure.subplot.left:    0.07    # the left side of the subplots of the figure
+figure.subplot.bottom:  0.09    # the bottom of the subplots of the figure
+figure.subplot.hspace:  0.16    # the height between subplots of the figure,
+                                # (a fraction of the average axis height)

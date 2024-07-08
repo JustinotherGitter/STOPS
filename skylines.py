@@ -246,7 +246,7 @@ class Skylines:
         B : np.ndarray
             The second 1d array.
         max_diff : int, optional
-            The maximum difference allowed, by default -1.
+            The maximum difference allowed, by default 100.
         
         Returns
         -------
@@ -260,18 +260,19 @@ class Skylines:
         
         """
         # Compute the difference matrix using transpose
-        diff = np.abs(A - B[:, np.newaxis])
+        diff = A - B[:, np.newaxis]
         
         # Find the minimum value in each row (A) of `diff`
-        min_vals = np.min(diff, axis=0)
-        min_idxs = np.argmin(diff, axis=0)
-        # TODO: Recalculate min_val after
-        # selecting best min_val and removing the corresponding row/column
+        min_idxs = np.abs(diff).argmin(axis=0)
+        print(min_idxs.shape, diff.shape)
+        min_vals = np.array([diff[j, i] for i, j in enumerate(min_idxs)])
+        # TODO: Recalculate min_val after selecting best min_val and
+        # removing the corresponding row/column
 
         logging.debug(f"min_diff_matrix - min_vals: {np.round(min_vals, 2)}")
         logging.debug(f"min_diff_matrix - min_idxs: {min_idxs}")
 
-        max_mask = min_vals <= max_diff
+        max_mask = (min_vals <= max_diff) & (min_vals >= -1 * max_diff)
         
         return A[max_mask], min_vals[max_mask], min_idxs[max_mask]
 
@@ -513,7 +514,10 @@ class Skylines:
             properties,
             arc: bool = False,
         ) -> None:
-        plt.style.use(Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle')
+        plt.style.use([
+            Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle',
+            Path(__file__).parent.resolve() / 'utils/STOPS_skylines.mplstyle'
+        ])
         plt.rcParams['figure.subplot.hspace'] *= len(self.beams)
         
         def norm(x):
@@ -547,7 +551,8 @@ class Skylines:
                     
                 for ccd in range(self.ccds):
 
-                    # spectrum (transformed)
+                    # MARK: plot spectrum
+                    # (transformed)
                     ccdrange = spectra[1][fl][ext].shape[-1] // self.ccds
                     axs[0, ccd].plot(
                         wavelengths[1][fl][ext][
@@ -561,48 +566,49 @@ class Skylines:
                         label = f"${{{self.beams[ext]}}}_{{{fl + 1}}}^{{+ {10*ext + 30*fl}}}$" if ccd == 0 else None,
                     )
 
-                    # deviation
+                    # MARK: plot dev
                     sky_wavs, dev, peak_idx = self.min_diff_matrix(
                         lines['wav'],
                         wavelengths[1][fl][ext][peaks[1][fl][ext]],
                         max_diff=self.max_difference,
                     )
 
-                    # width/initial width
-                    width = properties[1][fl][ext]['widths'][peak_idx]
-                    width_i = np.zeros_like(width)
+                    # # MARK: width/initial width
+                    # width = properties[1][fl][ext]['widths'][peak_idx]
+                    # width_i = np.zeros_like(width)
 
-                    sky_i, i_dev, i_idx = self.min_diff_matrix(
-                        lines['wav'],
-                        wavelengths[0][fl][ext][peaks[0][fl][ext]],
-                        max_diff=self.max_difference,
-                    )
+                    # sky_i, i_dev, i_idx = self.min_diff_matrix(
+                    #     lines['wav'],
+                    #     wavelengths[0][fl][ext][peaks[0][fl][ext]],
+                    #     max_diff=self.max_difference,
+                    # )
 
-                    width_i = np.array([
-                        properties[0][fl][ext]['widths'][
-                            np.where(wav == sky_i)[0][0]
-                        ]
-                        if wav in sky_i else 1000
-                        for wav in sky_wavs
-                    ])
-                    width_ratio = (width / width_i) - 1
-                    width_ratio[width_ratio < 0] = 0
+                    # width_i = np.array([
+                    #     properties[0][fl][ext]['widths'][
+                    #         np.where(wav == sky_i)[0][0]
+                    #     ]
+                    #     if wav in sky_i else 1000
+                    #     for wav in sky_wavs
+                    # ])
+                    # width_ratio = (width / width_i) - 1
+                    # width_ratio[width_ratio < 0] = 0
 
-                    ylolims = width_ratio > self.max_difference
-                    width_ratio[
-                        width_ratio > self.max_difference
-                    ] = self.max_difference // 2
+                    # ylolims = width_ratio > self.max_difference
+                    # width_ratio[
+                    #     width_ratio > self.max_difference
+                    # ] = self.max_difference // 2
 
                     ok = np.where(
                         (sky_wavs >= wavelengths[1][fl][ext].data[ccdrange*ccd]) &
                         (sky_wavs <= wavelengths[1][fl][ext].data[ccdrange*(ccd+1)])
                     )
-                    axs[1, ccd].errorbar(
+                    axs[1, ccd].plot(
                         sky_wavs[ok],
-                        dev.data[ok],
-                        yerr=(width_ratio[ok] * 0, width_ratio[ok]),
-                        lolims=ylolims[ok],
-                        fmt="." if ext else "x",
+                        dev[ok],
+                        # yerr=(width_ratio[ok] * 0, width_ratio[ok]),
+                        # lolims=ylolims[ok],
+                        "." if ext else "x",
+                        # fmt="." if ext else "x",
                         alpha=0.8,
                         color=color,
                         # markeredgecolor='white',
@@ -610,7 +616,7 @@ class Skylines:
                         # label=f"${self.beams[ext]}_{{{fl + 1}}}$",
                     )
 
-                    logging.debug(f"plot - RMS: {np.sqrt(np.mean(dev**2)):2.3f}")
+                    logging.debug(f"plot - RMS: {np.sqrt(np.mean(dev[ok]**2)):2.3f}")
 
         for ccd in range(self.ccds):
             # spectrum
@@ -627,9 +633,9 @@ class Skylines:
             )
             for x in lines['wav'][ok]: axs[0, ccd].axvline(x, ls='dashed', c='0.7')
 
-        axs[0, 0].set_ylabel("Rel. Intensity\n($\%$)")
+        axs[0, 0].set_ylabel("Rel. Intensity ($\%$)")
         axs[1, 0].set_ylabel(
-            "Closest Peak\n($|\lambda_{salt} - \lambda_{obs.}|$)"
+            "Closest Peak ($\Delta\lambda$)"
         )
         # for ax in axs[:, 0]:
         #     ax.legend(loc='upper left', ncols=(fl + 1) * (ext + 1) + 1)
