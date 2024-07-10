@@ -1,121 +1,217 @@
 # [STOPS] (*Supplementary TOols for POLSALT Spectropolarimetry*)
 
-[STOPS] is a Python3-based pipeline designed to provide additional functionality of the [POLSALT] pipeline. This pipeline provides a command-line interface (CLI) that can call four main classes, each implementing a unique function: `Split`, `Join`, `Skylines`, and `CrossCorrelate`.
+[STOPS] is a Python3-based pipeline designed to provide additional functionality to the [POLSALT] pipeline. This pipeline provides a command-line interface (CLI) that can call four main classes, each implementing a unique function: `Split`, `Join`, `Skylines`, and `CrossCorrelate`.
 
 ## Installation
 
-To install the STOPS pipeline, clone the repository and install the dependencies:
+To install the [STOPS] pipeline, clone the repository and install the dependencies:
 
 ```bash
 git clone https://github.com/JustinotherGitter/STOPS.git
+# or manually download the repository
 cd STOPS
-# Additionally create a STOPS environment
+# Additionally create and activate a python3 `STOPS` venv
 pip install -r requirements.txt
 ```
 
 ## Classes
 
-* [**Split**](/split.py): Separate the pre-processed [POLSALT] files by the perpendicular beams.
-* [**Join**](/join.py): Combine external wavelength files and with the perpendicular beams, as expected by [POLSALT]'s `spectral extraction`
-* [**Skylines**](/skylines.py): Automatically identify and calculate the difference between [known](http://pysalt.salt.ac.za/lineatlas/sky_strengths.txt "SALT identified sky lines") and observed sky lines (or [arc lines](https://astronomers.salt.ac.za/data/salt-longslit-line-atlas/ "SALT arc lines available for calibration")) in spectropolarimetric data.
-* [**CrossCorrelate**](/cross_correlate.py): Perform cross-correlation analysis on spectropolarimetric data, for each file comparing the perpendicular polarization beams, or across multiple files comparing a singular polarization beam.
+* [**Split**](/split.py): Separate the pre-processed [POLSALT] [FITS] files by their perpendicular polarization beams into two [IRAF] parsable [FITS] files.
+* [**Join**](/join.py): Combine external wavelength calibration solutions with the perpendicular beams, as expected by [POLSALT]'s `spectral extraction`
+* [**Skylines**](/skylines.py): Automatically identify and calculate the difference between [known](http://pysalt.salt.ac.za/lineatlas/sky_strengths.txt "SALT identified sky lines") and observed sky lines (or [arc lines](https://astronomers.salt.ac.za/data/salt-longslit-line-atlas/ "SALT arc lines available for calibration")) in wavelength calibrated spectropolarimetric data.
+* [**CrossCorrelate**](/cross_correlate.py): Perform cross-correlation analysis on the spectropolarimetric data (possible after [POLSALT]'s `spectral extraction`), either for each file comparing the perpendicular polarization beams, or across multiple files comparing a singular polarization beam.
 
 ## Procedure
-A simplistic workflow is provided below, for further information and implementation please see the [STOPS writeup](https://github.com/JustinotherGitter/Masters-Thesis/Thesis.pdf "Justin Cooper - Master Thesis").
+A simplistic workflow is provided below, for further information and implementation please see the [write-up] of [STOPS].
 
-1. Pre-reductions may be performed using [POLSALT], or downloaded directly.
-1. The $O$- & $E$-beams are split into to separate FITS files using `split`, into the format required by [IRAF].
-1. Wavelength calibrations are performed via [IRAF]
-    * Alternative external tools, such as Python may also be used for wavelength calibrations, but must be formatted into the format specified in the [Wavelength section](#wavelength-calibration).
-1. The $O$- & $E$-beams, along with their respective wavelength solutions, are recombined into a single file using `join`, with the respective header and extensions updated for [POLSALT], and cosmic-ray cleaning performed via the `lacosmic` algorithm implemented through `ccdproc`.
+1. Pre-reductions may be performed on the raw data using [POLSALT], or downloaded directly alongside the raw data.
+1. The $O$- & $E$-beams are split into two separate [FITS] files using `split`, into the format required by [IRAF].
+1. Wavelength calibrations are performed via [IRAF], replacing the [POLSALT] `wavelength calibration`.
+    * Alternate external tools, such as Python may also be used for wavelength calibrations.
+    * Formatting of non-[IRAF] wavelength solutions must be formatted as described in the [Wavelength section](#wavelength-calibration).
+1. The $O$- & $E$-beams, along with their respective wavelength solutions, are recombined into a single file using `join`, and cosmic-ray cleaning performed via the `lacosmic` algorithm implemented through `ccdproc`.
 1. The wavelength calibrations for the $O$- & $E$-beams may be compared using `skylines`, highlighting variations between the individual wavelength solutions.
+1. Spectral extraction is performed via [POLSALT].
 1. The extracted spectra may be compared using `correlate`, allowing the correlation between the perpendicular polarization beams within a file to be correlated, or for a polarization beam across multiple files.
-1. Spectral extraction and polarization calculations are performed via [POLSALT].
-1. Flux calibration may be performed using the astropy and scipy packages, assuming a standard is available for the observational setup.
+1. If either `skylines` or `correlate` show poor wavelength calibrations, the wavelength calibration procedure may be repeated.
+1. The files generated, excluding the wavelength solution, for wavelength calibrations may be moved or deleted.
+1. Polarization calculations are performed via [POLSALT].
+1. Flux calibration may be performed using the `astropy` and `scipy` packages, assuming a standard is available for the observational setup.
 
 ## Wavelength Calibration
 
+Wavelength calibrations are ideally intended for [IRAF]. The [IRAF] wavelength calibration procedure uses `identify`, `reidentify`, `fitcoords`, and optionally `transform`. Any preferred parameters may be used during calibration with only the polynomial type of the resultant wavelength solution (as produced by `fitcoords`) being limited to either `Chebyshev` or `Legendre` polynomials.
+
+Alternate wavelength solutions may be used but must be:
+* Saved in the working directory,
+* Have separate files for the $O$- and $E$-beams,
+* Have a name containing:
+    * The polynomial type (e.g. `cheb` for Chebyshev, or `leg` for Legendre), and
+    * The polarization beam contained within (e.g. `O` or `E`),
+* Contain on:
+    * line 1 → the $x$-order of the 2D wavelength solution,
+    * line 2 → the $y$-order of the 2D wavelength solution,
+    * lines 3+ → the ($x * y$) solution coefficients, in order, separated by line, and
+    * all lines → no delimiters.
+
+<br>
+e.g.
+
+`cheb_params_e.txt`
+```
+5
+5
+7419.096745914063
+1510.03933621895
+-21.10886852752348
+-2.079553916887794
+0.06772631420528228
+0.7720164913117386
+...
+```
 
 ## CLI Usage
 
-The [STOPS] pipeline can be controlled via a command-line interface. Below are the details of the available commands and their options.
-
-### General Options
-
-- `-V`, `--version`: Show the version of [STOPS].
-- `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
-- `-l`, `--log`: Specify the filename of the logging file. The file is created if it does not exist.
-
-### Commands
-
-#### Split
+The [STOPS] pipeline is most generally controlled via a CLI. The basic format of commands follows:
 
 ```bash
-[py-path]python3 [rel-path]STOPS [General options] [data-dir] split [Options] [data-files]
+<py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
+```
+where:
+* `<>` parameters are optional depending on the system setup, e.g. if Python or [STOPS] has been added to `$PATH`, etc. (for simplicity, these parameters will be left out of the usage examples below),
+* `MODE` refers to the operational mode of [STOPS], as listed in [Modes](#modes),
+* `()` parameters are optional, and
+* `[]` parameters are compulsory (unless otherwise stated).
+
+Below are the details of the [STOPS] options, the available Modes, and their respective sub-options.
+
+### [STOPS] Options
+
+**Optional:**
+* `-V`, `--version`: Show the version of [STOPS].
+* `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
+* `-l`, `--log`: Specify the filename of the logging file, which is created if it does not exist.
+
+**Compulsory:**
+* `data_dir` : The Path (absolute or relative) to the directory containing the Working data. `.` may be used to indicate the current directory that the CLI is running in.
+
+### Help Commands
+
+For detailed information on [STOPS], use the help command:
+```bash
+python STOPS . --help
 ```
 
-**Options:**
+Each mode is also detailed, and may be viewed using the help command:
+```bash
+python STOPS . MODE --help
+```
+where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines`](#skylines), or [`crosscorrelate`](#correlate).
+
+### Modes
+
+---
+
+#### <ins>s</ins>plit
+
+```bash
+python STOPS . split (Options) [mxgbp*.fits]
+```
+
+##### <ins>s</ins>plit Options
+
+**Optional:**
+* `-n`, `--no_arc`: Exclude arc files from processing.
+* `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split. Defaults to the [POLSALT]'s default.
+* `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams. Defaults to the [POLSALT]'s default.
+
+**Compulsory:**
+* Filenames to be split. May be excluded if the [RegEx] pattern in the example matches the desired files.
+
+---
+
+#### <ins>j</ins>oin
+
+```bash
+python STOPS . join (Options) []
+```
+
+##### <ins>j</ins>oin Options
+
+**Optional:**
 - `-n`, `--no_arc`: Exclude arc files from processing.
-- `-s`, `--split_row`: Row along which the O and E beams are split. Defaults to the pipeline's default.
-- `-p`, `--save_prefix`: Prefix appended to the filenames for saving the O and E beams. Defaults to the pipeline's default.
+- `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split. Defaults to the pipeline's default.
+- `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams. Defaults to the pipeline's default.
+- `-c`, `--coefficients`: Custom coefficients to use instead of the `IRAF` fitcoords database. Use as `-c <o_solution> <e_solution>` or a [RegEx] descriptor `-c <*solution*extension>`.
 
-#### Join
+**Compulsory:**
+* May be excluded as `join` will identify all split files and wavelength solution database entries to recombine.
 
-Combine multiple data sets into a single cohesive unit.
+---
 
-```bash
-<py-path>python3 <rel-path>STOPS join [OPTIONS] [data_dir]
-```
-
-**Options:**
-- `-n`, `--no_arc`: Exclude arc files from processing.
-- `-s`, `--split_row`: Row along which the O and E beams are split. Defaults to the pipeline's default.
-- `-p`, `--save_prefix`: Prefix appended to the filenames for saving the O and E beams. Defaults to the pipeline's default.
-- `-c`, `--coefficients`: Custom coefficients to use instead of the `IRAF` fitcoords database. Use as `-c <o_solution> <e_solution>` or a regex descriptor `-c <*solution*extension>`.
-
-#### Skylines
-
-Identify and process sky lines in spectropolarimetric data.
+#### <ins>sky</ins>lines
 
 ```bash
-<py-path>python3 <rel-path>STOPS skylines [OPTIONS] filenames
+python STOPS . skylines (Options) [Filenames]
 ```
 
-**Options:**
+##### <ins>sky</ins>lines Options
+
+**Optional:**
 - `-b`, `--beams`: Beams to process. Defaults to `OE`, but may be given `O`, `E`, or `OE`.
 - `-ccd`, `--split_ccd`: Flag to NOT split CCD's.
 - `-c`, `--continuum_order`: Order of continuum to remove from spectra.
-- `-p`, `--plot`: Flag for additional plot outputs.
+- `-p`, `--plot`: Flag for additional debug plot outputs.
 - `-s`, `--save_prefix`: Prefix used when saving plot.
-- `-t`, `--transform`: Force transform images.
+- `-t`, `--transform`: Force transform images, for [IRAF] `transform` [FITS] file debugging.
 
-#### CrossCorrelate
+**Compulsory:**
+* Filenames to be considered for `skyline` comparisons. May either be:
+    * the `wmxgbp*.fits` [RegEx] pattern for [POLSALT] formatted, wavelength calibrated, [FITS] files, or
+    * the `tbeam*.fits` [RegEx] pattern for [IRAF] formatted, `transform` output, [FITS] files.
 
-Perform cross-correlation analysis on spectropolarimetric data.
+---
+
+#### <ins>corr</ins>elate
 
 ```bash
-<py-path>python3 <rel-path>STOPS crosscorrelate [OPTIONS] filenames
+python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ```
 
-**Options:**
+##### <ins>corr</ins>elate Options
+
+**Optional:**
 - `-b`, `--beams`: Beams to process. Defaults to `OE`, but may be given `O`, `E`, or `OE`.
 - `-ccd`, `--split_ccd`: Flag to NOT split CCD's.
-- `-c`, `--continuum_order`: Order of continuum to remove from spectra.
-- `-p`, `--plot`: Flag for additional plot outputs.
+- `-c`, `--continuum_order`: Order of continuum to remove from spectra. Deprecated keyword
+- `-p`, `--plot`: Flag for additional debug plot outputs.
 - `-s`, `--save_prefix`: Prefix used when saving plot.
 - `-o`, `--offset`: Introduce an offset when correcting for known offset in spectra or for testing purposes.
 
-### Help Command
+**Compulsory:**
+* Filenames to be considered for `correlate` cross-correlation. May be excluded if the [RegEx] pattern in the example matches the desired files.
 
-For detailed information on each command and its options, use the help command:
+<br>
 
-```bash
-<py-path>python3 <rel-path>STOPS <command> --help
-```
+## Contributing
 
-Replace `<command>` with `split`, `join`, `skylines`, or `crosscorrelate` to get detailed information about the available options for each function.
+Contributions are welcome! Please fork the repository and create a pull request with your changes. The following styles are broadly implemented, and serve as a collection of references used when creating the [STOPS] pipeline:
+* General [Python project structure](https://docs.python-guide.org/writing/structure/ "Structuring a Python project") applies
+* Docstrings follow the NumPy [documentation style](https://numpydoc.readthedocs.io/en/latest/format.html "NumPy style guide")
+* Classes and methods implement [typing](https://docs.python.org/3/library/typing.html "typing in Python") for type hinting
+* [Logging](https://realpython.com/python-logging/ "Logging in Python") is implemented
+* [Tests](https://docs.python-guide.org/writing/tests/ "Testing in Python") are planned but not implemented
 
+## License
+
+This project is licensed under the BSD 3-Clause License. See the [LICENSE](/LICENSE "STOPS License") for further details.
+
+
+[writeup]: <https://github.com/JustinotherGitter/Masters-Thesis/Thesis.pdf> (Justin Cooper - Master Thesis)
 
 [IRAF]: <https://iraf-community.github.io/> (IRAF GitHub Repository)
 [POLSALT]: <https://github.com/saltastro/polsalt> (POLSALT GitHub Repository)
 [STOPS]: <https://github.com/JustinotherGitter/STOPS> (STOPS GitHub Repository)
+
+[FITS]: <https://fits.gsfc.nasa.gov/standard40/fits_standard40aa-le.pdf> (FITS file standard)
+[RegEx]: <https://regexr.com/> (Basic RegEx test environment)
