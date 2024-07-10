@@ -4,14 +4,13 @@
 
 ## Installation
 
-To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, clone the repository and install the dependencies:
+To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, clone the repository and install the [dependencies](/requirements.txt "Requirements file"):
 
 ```bash
-git clone https://github.com/JustinotherGitter/STOPS.git
-# or manually download the repository
-cd STOPS
-# Additionally create and activate a python3 `STOPS` venv
-pip install -r requirements.txt
+$ git clone https://github.com/JustinotherGitter/STOPS.git # or manually download the repository
+$ cd STOPS
+$ # Additionally create and activate a python3 `STOPS` venv
+$ pip install -r requirements.txt
 ```
 
 ## Classes
@@ -58,7 +57,7 @@ Alternate wavelength solutions may be used but must be:
 e.g.
 
 `cheb_params_e.txt`
-```
+```text
 5
 5
 7419.096745914063
@@ -75,7 +74,7 @@ e.g.
 The [<span style="font-variant:small-caps;">stops</span>] pipeline is most generally controlled via a CLI. The basic format of commands follows:
 
 ```bash
-<py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
+$ <py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
 ```
 where:
 * `<>` parameters are optional depending on the system setup, e.g. if Python or [<span style="font-variant:small-caps;">stops</span>] has been added to `$PATH`, etc. (for simplicity, these parameters will be left out of the usage examples below),
@@ -83,30 +82,30 @@ where:
 * `()` parameters are optional, and
 * `[]` parameters are compulsory (unless otherwise stated).
 
-### Help Commands
+Below are the details of the [STOPS] options, the available Modes, and their respective sub-options.
 
-For detailed information on [<span style="font-variant:small-caps;">stops</span>], use the help command:
-```bash
-python STOPS . --help
-```
-
-Help for each mode is also accessible, and may be viewed using the help command:
-```bash
-python STOPS . MODE --help
-```
-where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines`](#skylines), or [`crosscorrelate`](#correlate).
-
-Below are the details of the [<span style="font-variant:small-caps;">stops</span>] options, the available Modes, and their respective sub-options.
-
-### [<span style="font-variant:small-caps;">stops</span>] Options
+### [STOPS] Options
 
 **Optional:**
-* `-V`, `--version`: Show the version of [<span style="font-variant:small-caps;">stops</span>].
+* `-V`, `--version`: Show the version of [STOPS].
 * `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
 * `-l`, `--log`: Specify the filename of the logging file, which is created if it does not exist.
 
 **Compulsory:**
 * `data_dir` : The Path (absolute or relative) to the directory containing the Working data. `.` may be used to indicate the current directory that the CLI is running in.
+
+### Help Commands
+
+For detailed information on [<span style="font-variant:small-caps;">stops</span>], use the help command:
+```bash
+$ python STOPS . --help
+```
+
+Help for each mode is also accessible, and may be viewed using the help command:
+```bash
+$ python STOPS . MODE --help
+```
+where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines`](#skylines), or [`crosscorrelate`](#correlate).
 
 ### Modes
 
@@ -115,7 +114,7 @@ Below are the details of the [<span style="font-variant:small-caps;">stops</span
 #### <ins>s</ins>plit
 
 ```bash
-python STOPS . split (Options) [mxgbp*.fits]
+$ python STOPS . split (Options) [mxgbp*.fits]
 ```
 
 ##### <ins>s</ins>plit Options
@@ -133,7 +132,7 @@ python STOPS . split (Options) [mxgbp*.fits]
 #### <ins>j</ins>oin
 
 ```bash
-python STOPS . join (Options) []
+$ python STOPS . join (Options) []
 ```
 
 ##### <ins>j</ins>oin Options
@@ -152,7 +151,7 @@ python STOPS . join (Options) []
 #### <ins>sky</ins>lines
 
 ```bash
-python STOPS . skylines (Options) [Filenames]
+$ python STOPS . skylines (Options) [Filenames]
 ```
 
 ##### <ins>sky</ins>lines Options
@@ -175,7 +174,7 @@ python STOPS . skylines (Options) [Filenames]
 #### <ins>corr</ins>elate
 
 ```bash
-python STOPS . correlate (Options) [ecwmxgbp*.fits]
+$ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ```
 
 ##### <ins>corr</ins>elate Options
