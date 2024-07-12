@@ -1,7 +1,7 @@
-"""Module for splitting ``polsalt`` FITS files."""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""Module for splitting ``polsalt`` FITS files."""
 
 from __init__ import __author__, __email__, __version__
 
@@ -21,7 +21,6 @@ from utils.Constants import SAVE_PREFIX, CROP_DEFAULT, SPLIT_ROW
 
 # MARK: Split Class
 class Split:
-
     #----------split0----------
 
     """
@@ -31,7 +30,7 @@ class Split:
 
     Parameters
     ----------
-    data_dir : str
+    data_dir : str | Path
         The path to the data to be split
     fits_list : list[str], optional
         A list of pre-reduced `polsalt` FITS files to be split within `data_dir`.
@@ -102,13 +101,13 @@ class Split:
 
     # MARK: Split init
     def __init__(
-        self,
-        data_dir: Path,
-        fits_list: list[str] = None,
-        split_row: int = SPLIT_ROW,
-        no_arc: bool = False,
-        save_prefix: Path | None = None,
-        **kwargs
+            self,
+            data_dir: Path,
+            fits_list: list[str] = None,
+            split_row: int = SPLIT_ROW,
+            no_arc: bool = False,
+            save_prefix: Path | None = None,
+            **kwargs
     ) -> None:
         self.data_dir = data_dir
         self.fits_list = find_files(
@@ -119,7 +118,7 @@ class Split:
         )
         self.split_row = split_row
         self.save_prefix = SAVE_PREFIX
-        if type(save_prefix) == dict:
+        if isinstance(save_prefix, dict):
             self.save_prefix = save_prefix
 
         self.arc = "" if no_arc else find_arc(self.fits_list)
@@ -131,9 +130,9 @@ class Split:
 
     # MARK: Split Files
     def split_file(
-        self,
-        file: os.PathLike
-    ) -> tuple[pyfits.HDUList]:
+            self,
+            file: os.PathLike
+    ) -> tuple[pyfits.HDUList, pyfits.HDUList]:
         """
         Split the single FITS file into separated `O`- and `E`- FITS files.
 
@@ -144,25 +143,25 @@ class Split:
 
         Returns
         -------
-        tuple[astropy.io.fits.HDUList]
+        tuple[astropy.io.fits.HDUList, astropy.io.fits.HDUList]
             Tuple containing the split O and E beam HDULists.
         
         """
         # Create empty HDUList
-        O_beam = pyfits.HDUList()
-        E_beam = pyfits.HDUList()
+        o_beam = pyfits.HDUList()
+        e_beam = pyfits.HDUList()
 
         # Open file and split O & E beams
         with pyfits.open(file) as hdul:
-            O_beam.append(hdul["PRIMARY"].copy())
-            E_beam.append(hdul["PRIMARY"].copy())
+            o_beam.append(hdul["PRIMARY"].copy())
+            e_beam.append(hdul["PRIMARY"].copy())
 
             # Split specific extention
             raw_split = self.split_ext(hdul, "SCI")
 
-            # O_beam[0].data = raw_split['SCI'].data[1]
-            # E_beam[0].data = raw_split['SCI'].data[0]
-            O_beam[0].data, E_beam[0].data = self.crop_file(raw_split)
+            # o_beam[0].data = raw_split['SCI'].data[1]
+            # e_beam[0].data = raw_split['SCI'].data[0]
+            o_beam[0].data, e_beam[0].data = self.crop_file(raw_split)
 
             # Handle prefix and names
             pref = "arc" if file == self.arc else "beam"
@@ -173,23 +172,24 @@ class Split:
             self.update_beam_lists(o_name, e_name, pref == "arc")
 
             # Handle don't save case
-            if self.save_prefix == None:
-                return O_beam, E_beam
+            if self.save_prefix is None:
+                return o_beam, e_beam
 
             # Handle save case
-            O_beam.writeto(o_name, overwrite=True)
-            E_beam.writeto(e_name, overwrite=True)
+            o_beam.writeto(o_name, overwrite=True)
+            e_beam.writeto(e_name, overwrite=True)
 
-            return O_beam, E_beam
+            return o_beam, e_beam
 
     # MARK: Split extensions
     def split_ext(
-        self,
-        hdulist: pyfits.HDUList,
-        ext: str = "SCI"
+            self,
+            hdulist: pyfits.HDUList,
+            ext: str = "SCI"
     ) -> pyfits.HDUList:
         """
-        Split the data of the specified extension of `hdulist` into its `O`- and `E`- beams.
+        Split the data of the specified extension of `hdulist` into
+        its `O`- and `E`- beams.
 
         Parameters
         ----------
@@ -228,11 +228,11 @@ class Split:
         return hdu
 
     # MARK: Crop files
+    @staticmethod
     def crop_file(
-        self,
-        hdulist: pyfits.HDUList,
-        crop: int = CROP_DEFAULT
-    ) -> tuple[np.ndarray]:
+            hdulist: pyfits.HDUList,
+            crop: int = CROP_DEFAULT
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Crop the data with respect to the `O`/`E` beam.
 
@@ -247,7 +247,7 @@ class Split:
 
         Returns
         -------
-        tuple[numpy.ndarray]
+        tuple[numpy.ndarray, np.ndarray]
             Tuple containing the cropped O and E beam data arrays.
 
         """
@@ -258,10 +258,10 @@ class Split:
 
     # MARK: Update beam lists
     def update_beam_lists(
-        self,
-        o_name,
-        e_name,
-        arc: bool = True
+            self,
+            o_name,
+            e_name,
+            arc: bool = True
     ) -> None:
         """
         Update the `o_files` and `e_files` attributes.
@@ -293,7 +293,7 @@ class Split:
     # MARK: Save beam lists
     def save_beam_lists(self, file_suffix: str = 'frames') -> None:
         with open(f"o_{file_suffix}", "w+") as f_o, \
-             open(f"e_{file_suffix}", "w+") as f_e:
+                open(f"e_{file_suffix}", "w+") as f_e:
             for i, j in zip(self.o_files, self.e_files):
                 f_o.write(i + "\n")
                 f_e.write(j + "\n")
@@ -318,10 +318,11 @@ class Split:
 
         return
 
+
 # MARK: Main function
 def main(argv) -> None:
     """Main function."""
-    
+
     return
 
 

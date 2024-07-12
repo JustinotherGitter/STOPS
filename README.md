@@ -24,18 +24,18 @@ $ pip install -r requirements.txt
 A simplistic workflow is provided below, for further information and implementation please see the [write-up] of [<span style="font-variant:small-caps;">stops</span>].
 
 1. Pre-reductions may be performed on the raw data using [<span style="font-variant:small-caps;">polsalt</span>], or downloaded directly alongside the raw data.
-1. The $O$- & $E$-beams are split into two separate [FITS] files using `split`, into the format required by [<span style="font-variant:small-caps;">iraf</span>].
-1. Wavelength calibrations are performed via [<span style="font-variant:small-caps;">iraf</span>], replacing the [<span style="font-variant:small-caps;">polsalt</span>] `wavelength calibration`.
+2. The $O$- & $E$-beams are split into two separate [FITS] files using `split`, into the format required by [<span style="font-variant:small-caps;">iraf</span>].
+3. Wavelength calibrations are performed via [<span style="font-variant:small-caps;">iraf</span>], replacing the [<span style="font-variant:small-caps;">polsalt</span>] `wavelength calibration`.
     * Alternate external tools, such as Python may also be used for wavelength calibrations.
     * Formatting of non-[<span style="font-variant:small-caps;">iraf</span>] wavelength solutions must be formatted as described in the [Wavelength section](#wavelength-calibration).
-1. The $O$- & $E$-beams, along with their respective wavelength solutions, are recombined into a single file using `join`, and cosmic-ray cleaning performed via the `lacosmic` algorithm implemented through `ccdproc`.
-1. The wavelength calibrations for the $O$- & $E$-beams may be compared using `skylines`, highlighting variations between the individual wavelength solutions.
-1. Spectral extraction is performed via [<span style="font-variant:small-caps;">polsalt</span>].
-1. The extracted spectra may be compared using `correlate`, allowing the correlation between the perpendicular polarization beams within a file to be correlated, or for a polarization beam across multiple files.
-1. If either `skylines` or `correlate` show poor wavelength calibrations, the wavelength calibration procedure may be repeated.
-1. The files generated, excluding the wavelength solution, for wavelength calibrations may be moved or deleted.
-1. Polarization calculations are performed via [<span style="font-variant:small-caps;">polsalt</span>].
-1. Flux calibration may be performed using the `astropy` and `scipy` packages, assuming a standard is available for the observational setup.
+4. The $O$- & $E$-beams, along with their respective wavelength solutions, are recombined into a single file using `join`, and cosmic-ray cleaning performed via the `lacosmic` algorithm implemented through `ccdproc`.
+5. The wavelength calibrations for the $O$- & $E$-beams may be compared using `skylines`, highlighting variations between the individual wavelength solutions.
+6. Spectral extraction is performed via [<span style="font-variant:small-caps;">polsalt</span>].
+7. The extracted spectra may be compared using `correlate`, allowing the correlation between the perpendicular polarization beams within a file to be correlated, or for a polarization beam across multiple files.
+8. If either `skylines` or `correlate` show poor wavelength calibrations, the wavelength calibration procedure may be repeated.
+9. The files generated, excluding the wavelength solution, for wavelength calibrations may be moved or deleted.
+10. Polarization calculations are performed via [<span style="font-variant:small-caps;">polsalt</span>].
+11. Flux calibration may be performed using the `astropy` and `scipy` packages, assuming a standard is available for the observational setup.
 
 ## Wavelength Calibration
 

@@ -1,7 +1,7 @@
-"""Module for joining the split FITS files with an external wavelength solution."""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""Module for joining the split FITS files with an external wavelength solution."""
 
 from __init__ import __author__, __email__, __version__
 
@@ -27,7 +27,6 @@ from utils.Constants import DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
 
 # MARK: Join Class
 class Join:
-
     #----------join0----------
 
     """
@@ -36,7 +35,7 @@ class Join:
 
     Parameters
     ----------
-    data_dir : str
+    data_dir : str | Path
         The path to the data to be joined
     database : str, optional
         The name of the `IRAF` database folder.
@@ -80,7 +79,7 @@ class Join:
     -------
     get_solutions(wavlist: list | None, prefix: str = "fc") -> (fc_files, custom): tuple[list[str], bool]
         Parse `solutions_list` and return valid solution files and if they are non-`IRAF` solutions.
-    parse_solution(fc_file: str, xshape: int, yshape: int) -> tuple[dict[str, int], np.ndarray]
+    parse_solution(fc_file: str, x_shape: int, y_shape: int) -> tuple[dict[str, int], np.ndarray]
         Loads the wavelength solution file and parses keywords necessary for creating the wavelength extension.
     join_file(file: os.PathLike) -> None
         Joins the files, 
@@ -112,7 +111,7 @@ class Join:
         `x`, `y`, *coefficients...
     where a solution are of order (`x` by `y`) and must contain x*y coefficients,
     all separated by newlines. The name of the custom wavelength solution file
-    must contain either "cheb" or "leg" for Chebychev or Legendre
+    must contain either "cheb" or "leg" for Chebyshev or Legendre
     wavelength solutions, respectively.
 
     Cosmic ray rejection is performed using lacosmic [1]_ implemented in ccdproc via astroscrappy [2]_.
@@ -128,16 +127,16 @@ class Join:
 
     # MARK: Join init
     def __init__(
-        self,
-        data_dir: Path,
-        database: str = "database",
-        fits_list: list[str] = None,
-        solutions_list: list[Path] = None,
-        split_row: int = SPLIT_ROW,
-        no_arc: bool = True,
-        save_prefix: Path | None = None,
-        verbose: int = 30,
-        **kwargs,
+            self,
+            data_dir: Path,
+            database: str = "database",
+            fits_list: list[str] = None,
+            solutions_list: list[Path] = None,
+            split_row: int = SPLIT_ROW,
+            no_arc: bool = True,
+            save_prefix: Path | None = None,
+            verbose: int = 30,
+            **kwargs,
     ) -> None:
         self.data_dir = data_dir
         self.database = Path(data_dir) / database
@@ -150,7 +149,7 @@ class Join:
         self.fc_files, self.custom = self.get_solutions(solutions_list)
         self.split_row = split_row
         self.save_prefix = SAVE_PREFIX
-        if type(save_prefix) == dict:
+        if isinstance(save_prefix, dict):
             self.save_prefix = save_prefix
 
         self.no_arc = no_arc
@@ -163,10 +162,10 @@ class Join:
 
     # MARK: Find 2D WAV Functions
     def get_solutions(
-        self,
-        wavlist: list[str] | None,
-        prefix: str = "fc",
-        reverse: bool = True,
+            self,
+            wavlist: list[str] | None,
+            prefix: str = "fc",
+            reverse: bool = True,
     ) -> tuple[list[str], bool]:
         """
         Get the list of wavelength solution files.
@@ -175,10 +174,15 @@ class Join:
         ----------
         wavlist : list[str] | None
             A list of custom wavelength solutions files.
-            If ``None``, `Join` will search for wavelength solutions in the `database` directory.
+            If ``None``, `Join` will search for wavelength solutions
+            in the `database` directory.
         prefix : str, optional
             The prefix of the wavelength solution files.
             (Defaults to "fc")
+        reverse : bool, optional
+            Whether to reverse the wavelength solution files.
+            Necessary when `wavlist` ordered ['O', 'E']
+            (Defaults to True)
 
         Returns
         -------
@@ -204,11 +208,13 @@ class Join:
                 )
                 logging.error(msg)
                 raise FileNotFoundError(msg)
-            
-            sols = {i: j for i, j in zip(['O', 'E'], sorted(ws, reverse=reverse))}
+
+            sols = {
+                i: j for i, j in zip(['O', 'E'], sorted(ws, reverse=reverse))
+            }
             logging.debug(f"get_solutions - Found {sols} in {self.database}")
 
-            return (sorted(ws, reverse=reverse), False)
+            return sorted(ws, reverse=reverse), False
 
         # Custom solution
         if len(wavlist) >= 2:
@@ -225,17 +231,19 @@ class Join:
                     logging.error(msg)
                     raise FileNotFoundError(msg)
 
-            sols = {i: j for i, j in zip(['O', 'E'], sorted(wavlist, reverse=reverse))}
+            sols = {
+                i: j for i, j in zip(['O', 'E'], sorted(wavlist, reverse=reverse))
+            }
             logging.debug(f"get_solutions - Found {sols} in {self.database}")
 
-            return (sorted(wavlist, reverse=reverse), True) 
+            return sorted(wavlist, reverse=reverse), True
 
     # MARK: Parse 2D WAV Function
     def parse_solution(
-        self,
-        fc_file: str,
-        xshape: int,
-        yshape: int
+            self,
+            fc_file: str,
+            x_shape: int,
+            y_shape: int
     ) -> tuple[dict[str, int], np.ndarray]:
         """
         Parse the 2D wavelength solution function from `fc_file`.
@@ -244,36 +252,38 @@ class Join:
         ----------
         fc_file : str
             The filename of the wavelength solutions file.
-        xshape : int
+        x_shape : int
             The x-order of the 2D solution.
-        yshape : int
+        y_shape : int
             The y-order of the 2D solution.
 
         Returns
         -------
         tuple[dict[str, int], np.ndarray]
-            A tuple containing a dictionary of the parameters of the solution function 
+            A tuple containing a dictionary of
+            the parameters of the solution function 
             and the function coefficients.
 
         """
         fit_params = {}
-        coeff = []
 
         if self.custom:
             # Load coefficients
             coeff = np.loadtxt(fc_file)
 
-            fit_params["xorder"] = coeff[0].astype(int)
-            fit_params["yorder"] = coeff[1].astype(int)
+            fit_params["xorder"] = int(coeff[0].astype(int))
+            fit_params["yorder"] = int(coeff[1].astype(int))
             coeff = coeff[2:]
 
             f_type = 3
-            if "cheb" in str(fc_file): f_type = 1
-            elif "leg" in str(fc_file): f_type = 2
+            if "cheb" in str(fc_file):
+                f_type = 1
+            elif "leg" in str(fc_file):
+                f_type = 2
             fit_params["function"] = f_type
 
-            fit_params["xmin"], fit_params["xmax"] = 1, xshape
-            fit_params["ymin"], fit_params["ymax"] = 1, yshape
+            fit_params["xmin"], fit_params["xmax"] = 1, x_shape
+            fit_params["ymin"], fit_params["ymax"] = 1, y_shape
 
         else:
             # Parse IRAF fc database files
@@ -283,7 +293,7 @@ class Join:
                     file_contents.append(re.sub(r"[\n\t\s]*", "", i))
 
             if file_contents[9] != "1.":  # xterms - Cross-term type
-                msg=(
+                msg = (
                     "Cross-term not recognised (always 1 for "
                     "FITCOORDS), redo FITCOORDS or change manually."
                 )
@@ -295,10 +305,10 @@ class Join:
             fit_params["yorder"] = int(file_contents[8][:-1])
 
             fit_params["xmin"] = int(file_contents[10][:-1])
-            fit_params["xmax"] = xshape
+            fit_params["xmax"] = x_shape
             # int(file_contents[11][:-1])# stretch fit over x
             fit_params["ymin"] = int(file_contents[12][:-1])
-            fit_params["ymax"] = yshape
+            fit_params["ymax"] = y_shape
             # int(file_contents[13][:-1])# stretch fit over y
 
             coeff = np.array(file_contents[14:], dtype=float)
@@ -308,7 +318,7 @@ class Join:
             (fit_params["xorder"], fit_params["yorder"])
         )
 
-        return (fit_params, coeff)
+        return fit_params, coeff
 
     # MARK: Join Files
     def join_file(self, file: os.PathLike) -> None:
@@ -335,7 +345,6 @@ class Join:
         """
         # Create empty wavelength appended hdu list
         whdu = pyfits.HDUList()
-        primary_ext = ""
 
         # Handle prefix and names
         pref = "arc" if file == self.arc else "beam"
@@ -429,7 +438,7 @@ class Join:
             else:
                 msg = (
                     "Function type not recognised, please wavelength "
-                    "calibrate using either chebychev or legendre."
+                    "calibrate using either Chebyshev or Legendre."
                 )
                 raise Exception(msg)
 
@@ -460,24 +469,24 @@ class Join:
 
         drow_oc = (rpix_oc - rpix_oc[:, int(cols / 2)][:, None]) / rbin
 
-        ## Cropping as suggested
+        # Cropping as suggested
         for c, col in enumerate(drow_oc[0]):
             if np.isnan(col):
                 continue
 
             if int(col) < 0:
-                whdu["WAV"].data[0, int(col) :, c] = 0.0
+                whdu["WAV"].data[0, int(col):, c] = 0.0
             elif int(col) > cropsize:
-                whdu["WAV"].data[0, 0 : int(col) - cropsize, c] = 0.0
+                whdu["WAV"].data[0, 0: int(col) - cropsize, c] = 0.0
 
         for c, col in enumerate(drow_oc[1]):
             if np.isnan(col):
                 continue
 
             if int(col) > 0:
-                whdu["WAV"].data[1, 0 : int(col), c] = 0.0
+                whdu["WAV"].data[1, 0: int(col), c] = 0.0
             elif (int(col) < 0) & (abs(int(col)) > cropsize):
-                whdu["WAV"].data[1, int(col) + cropsize :, c] = 0.0
+                whdu["WAV"].data[1, int(col) + cropsize:, c] = 0.0
 
         # MARK: BPM masking
         whdu["BPM"].data[0] = np.where(
@@ -496,11 +505,11 @@ class Join:
         return
 
     # MARK: Check Crop
+    @staticmethod
     def check_crop(
-        self,
-        hdu: pyfits.HDUList,
-        o_file: str,
-        e_file: str
+            hdu: pyfits.HDUList,
+            o_file: str,
+            e_file: str
     ) -> int:
         """
         Check if cropping is necessary when joining `O`- and `E`-beams.
@@ -521,11 +530,9 @@ class Join:
 
         """
         cropsize = 0
-        o_y = 0
-        e_y = 0
 
         with pyfits.open(o_file) as o, \
-             pyfits.open(e_file) as e:
+                pyfits.open(e_file) as e:
             o_y = o[0].data.shape[0]
             e_y = e[0].data.shape[0]
 
@@ -547,7 +554,7 @@ class Join:
 
 def main(argv) -> None:
     """Main function."""
-    
+
     return
 
 

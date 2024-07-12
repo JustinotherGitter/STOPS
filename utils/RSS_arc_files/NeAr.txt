@@ -1,6 +1,6 @@
 # Neon Spectrum plus Argon
 # Oct 2011: ACS: adjusted original Ne.txt 
-# Apr 2012: ACS: added Ar lines and imroved Ne lines (using Argon file and NIST data base)
+# Apr 2012: ACS: added Ar lines and improved Ne lines (using Argon file and NIST data base)
 # Wavelength Intensity
 1000         10    acs: dummy line to improve first real line
 # start of check

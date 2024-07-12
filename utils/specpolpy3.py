@@ -15,9 +15,9 @@ def datedline(filename,date):
 
     line = ""
     for (l,datever) in enumerate(datever_l):
-        if (int(date) < int(datever[:8])): continue
+        if int(date) < int(datever[:8]): continue
         for (v,vdatever) in enumerate(datever_l[l:]):
-            if (int(vdatever[:8]) > int(datever[:8])): continue
+            if int(vdatever[:8]) > int(datever[:8]): continue
             datever = datever_l[l+v]
             line = line_l[l+v]
  

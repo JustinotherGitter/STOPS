@@ -30,7 +30,7 @@ def find_files(
 
     Parameters
     ----------
-    data_dir : str
+    data_dir : str | Path
         Directory path where the FITS files are located.
     filenames : List[str], optional
         List of filenames to search for. If provided, only these files will be searched for.
@@ -41,6 +41,9 @@ def find_files(
     ext : str, optional
         File extension to search for.
         (Default is ".fits")
+    sep_arc : bool, optional
+        Additional return for arc files.
+        (Default is False).
 
     Returns
     -------
