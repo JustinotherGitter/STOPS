@@ -97,12 +97,12 @@ Below are the details of the [STOPS] options, the available Modes, and their res
 ### Help Commands
 
 For detailed information on [<span style="font-variant:small-caps;">stops</span>], use the help command:
-```bash
+```console
 $ python STOPS . --help
 ```
 
 Help for each mode is also accessible, and may be viewed using the help command:
-```bash
+```console
 $ python STOPS . MODE --help
 ```
 where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines`](#skylines), or [`crosscorrelate`](#correlate).
@@ -113,7 +113,7 @@ where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines
 
 #### <ins>s</ins>plit
 
-```bash
+```console
 $ python STOPS . split (Options) [mxgbp*.fits]
 ```
 
@@ -131,7 +131,7 @@ $ python STOPS . split (Options) [mxgbp*.fits]
 
 #### <ins>j</ins>oin
 
-```bash
+```console
 $ python STOPS . join (Options) []
 ```
 
@@ -150,7 +150,7 @@ $ python STOPS . join (Options) []
 
 #### <ins>sky</ins>lines
 
-```bash
+```console
 $ python STOPS . skylines (Options) [Filenames]
 ```
 
@@ -173,7 +173,7 @@ $ python STOPS . skylines (Options) [Filenames]
 
 #### <ins>correlate</ins>
 
-```bash
+```console
 $ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ```
 
