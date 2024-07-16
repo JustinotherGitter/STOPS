@@ -51,7 +51,7 @@ Alternate wavelength solutions may be used but must be:
     * line 1 &nbsp;&nbsp;&nbsp;&nbsp;→ the $x$-order of the 2D wavelength solution,
     * line 2 &nbsp;&nbsp;&nbsp;&nbsp;→ the $y$-order of the 2D wavelength solution,
     * lines 3+ → the ($x * y$) solution coefficients, in order, separated by line, and
-    * all lines → no delimiters.
+    * all lines &nbsp;→ no delimiters.
 
 <br>
 e.g.
