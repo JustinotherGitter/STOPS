@@ -295,7 +295,7 @@ class Skylines:
     @staticmethod
     def load_lines(
             filename: str | Path | None = None,
-            dtype: list[tuple] = (('wav', float), ('flux', float)),
+            dtype: list[tuple] = [('wav', float), ('flux', float)],
             skip_header: int = 3,
             skip_footer: int = 1
     ) -> np.ndarray:
@@ -352,7 +352,7 @@ class Skylines:
             max_traces: int = 1,
             tr_pad: int = 5,
             bg_margin: int = 10,
-            lr_margins: list[int] = (10, 10),
+            lr_margins: list[int] = [10, 10],
             h_min: float = 0.5,
             h_rel: float = 1 - 0.05,
     ) -> np.ndarray:
