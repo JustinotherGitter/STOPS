@@ -57,7 +57,7 @@ Alternate wavelength solutions may be used but must be:
 e.g.
 
 `cheb_params_e.txt`
-```text
+```text cheb_params_e.txt
 5
 5
 7419.096745914063
