@@ -73,7 +73,7 @@ e.g.
 
 The [<span style="font-variant:small-caps;">stops</span>] pipeline is most generally controlled via a CLI. The basic format of commands follows:
 
-```bash
+```console
 $ <py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
 ```
 where:
