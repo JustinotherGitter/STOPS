@@ -6,7 +6,7 @@
 
 To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, clone the repository and install the [dependencies](/requirements.txt "Requirements file"):
 
-```bash
+```console
 $ git clone https://github.com/JustinotherGitter/STOPS.git # or manually download the repository
 $ cd STOPS
 $ # Additionally create and activate a python3 `STOPS` venv
