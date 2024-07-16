@@ -48,10 +48,10 @@ Alternate wavelength solutions may be used but must be:
     * The polynomial type (e.g. `cheb` for Chebyshev, or `leg` for Legendre), and
     * The polarization beam contained within (e.g. `O` or `E`),
 * Contain on:
-    * line 1 &nbsp;&nbsp;&nbsp;&nbsp;→ the $x$-order of the 2D wavelength solution,
-    * line 2 &nbsp;&nbsp;&nbsp;&nbsp;→ the $y$-order of the 2D wavelength solution,
+    * line 1 → the $x$-order of the 2D wavelength solution,
+    * line 2 → the $y$-order of the 2D wavelength solution,
     * lines 3+ → the ($x * y$) solution coefficients, in order, separated by line, and
-    * all lines &nbsp;→ no delimiters.
+    * all lines → no delimiters.
 
 <br>
 e.g.
