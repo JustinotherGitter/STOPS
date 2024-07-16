@@ -48,8 +48,8 @@ Alternate wavelength solutions may be used but must be:
     * The polynomial type (e.g. `cheb` for Chebyshev, or `leg` for Legendre), and
     * The polarization beam contained within (e.g. `O` or `E`),
 * Contain on:
-    * line 1 → the $x$-order of the 2D wavelength solution,
-    * line 2 → the $y$-order of the 2D wavelength solution,
+    * line 1 &nbsp;&nbsp;&nbsp;&nbsp;→ the $x$-order of the 2D wavelength solution,
+    * line 2 &nbsp;&nbsp;&nbsp;&nbsp;→ the $y$-order of the 2D wavelength solution,
     * lines 3+ → the ($x * y$) solution coefficients, in order, separated by line, and
     * all lines → no delimiters.
 
@@ -66,7 +66,7 @@ e.g.
 -2.079553916887794
 0.06772631420528228
 0.7720164913117386
-...
+'...'
 ```
 
 ## CLI Usage
@@ -171,13 +171,13 @@ $ python STOPS . skylines (Options) [Filenames]
 
 ---
 
-#### <ins>corr</ins>elate
+#### <ins>correlate</ins>
 
 ```bash
 $ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ```
 
-##### <ins>corr</ins>elate Options
+##### <ins>correlate</ins> Options
 
 **Optional:**
 - `-b`, `--beams`: Beams to process. Defaults to `OE`, but may be given `O`, `E`, or `OE`.
