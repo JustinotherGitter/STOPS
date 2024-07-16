@@ -82,12 +82,12 @@ where:
 * `()` parameters are optional, and
 * `[]` parameters are compulsory (unless otherwise stated).
 
-Below are the details of the [STOPS] options, the available Modes, and their respective sub-options.
+Below are the details of the [<span style="font-variant:small-caps;">stops</span>] options, the available Modes, and their respective sub-options.
 
-### [STOPS] Options
+### [<span style="font-variant:small-caps;">stops</span>] Options
 
 **Optional:**
-* `-V`, `--version`: Show the version of [STOPS].
+* `-V`, `--version`: Show the version of [<span style="font-variant:small-caps;">stops</span>].
 * `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
 * `-l`, `--log`: Specify the filename of the logging file, which is created if it does not exist.
 
