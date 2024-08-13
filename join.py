@@ -301,8 +301,8 @@ class Join:
 
             fit_params["function"] = int(file_contents[6][:-1])
 
-            fit_params["xorder"] = int(file_contents[7][:-1])
-            fit_params["yorder"] = int(file_contents[8][:-1])
+            fit_params["xorder"] = round(float(file_contents[7][:-1]), None)
+            fit_params["yorder"] = round(float(file_contents[8][:-1]), None)
 
             fit_params["xmin"] = int(file_contents[10][:-1])
             fit_params["xmax"] = x_shape
