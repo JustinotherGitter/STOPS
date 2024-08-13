@@ -1,6 +1,6 @@
 # *<ins>S</ins>upplementary <ins>To</ins>ols for <span style="font-variant:small-caps;">[<ins>p</ins>olsalt](https://github.com/saltastro/polsalt "POLSALT GitHub Repository")</span> <ins>S</ins>pectropolarimetry* ([<span style="font-variant:small-caps;">stops</span>])
 
-[<span style="font-variant:small-caps;">stops</span>] is a Python3-based pipeline designed to provide additional functionality to the [<span style="font-variant:small-caps;">polsalt</span>] pipeline. This pipeline provides a command-line interface (CLI) that can call four main classes, each implementing a unique function: `Split`, `Join`, `Skylines`, and `CrossCorrelate`.
+[<span style="font-variant:small-caps;">stops</span>] is a [Python]3-based pipeline designed to provide additional functionality to the [<span style="font-variant:small-caps;">polsalt</span>] pipeline. This pipeline provides a command-line interface (CLI) that can call four main classes, each implementing a unique function: `Split`, `Join`, `Skylines`, and `CrossCorrelate`.
 
 ## Installation
 
@@ -26,7 +26,7 @@ A simplistic workflow is provided below, for further information and implementat
 1. Pre-reductions may be performed on the raw data using [<span style="font-variant:small-caps;">polsalt</span>], or downloaded directly alongside the raw data.
 2. The $O$- & $E$-beams are split into two separate [FITS] files using `split`, into the format required by [<span style="font-variant:small-caps;">iraf</span>].
 3. Wavelength calibrations are performed via [<span style="font-variant:small-caps;">iraf</span>], replacing the [<span style="font-variant:small-caps;">polsalt</span>] `wavelength calibration`.
-    * Alternate external tools, such as Python may also be used for wavelength calibrations.
+    * Alternate external tools, such as [Python] may also be used for wavelength calibrations.
     * Formatting of non-[<span style="font-variant:small-caps;">iraf</span>] wavelength solutions must be formatted as described in the [Wavelength section](#wavelength-calibration).
 4. The $O$- & $E$-beams, along with their respective wavelength solutions, are recombined into a single file using `join`, and cosmic-ray cleaning performed via the `lacosmic` algorithm implemented through `ccdproc`.
 5. The wavelength calibrations for the $O$- & $E$-beams may be compared using `skylines`, highlighting variations between the individual wavelength solutions.
@@ -77,7 +77,7 @@ The [<span style="font-variant:small-caps;">stops</span>] pipeline is most gener
 $ <py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
 ```
 where:
-* `<>` parameters are optional depending on the system setup, e.g. if Python or [<span style="font-variant:small-caps;">stops</span>] has been added to `$PATH`, etc. (for simplicity, these parameters will be left out of the usage examples below),
+* `<>` parameters are optional depending on the system setup, e.g. if [Python] or [<span style="font-variant:small-caps;">stops</span>] has been added to `$PATH`, etc. (for simplicity, these parameters will be left out of the usage examples below),
 * `MODE` refers to the operational mode of [<span style="font-variant:small-caps;">stops</span>], as listed in [Modes](#modes),
 * `()` parameters are optional, and
 * `[]` parameters are compulsory (unless otherwise stated).
@@ -195,17 +195,19 @@ $ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ## Contributing
 
 Contributions are welcome! Please fork the repository and create a pull request with your changes. The following styles are broadly implemented, and serve as a collection of references used when creating the [<span style="font-variant:small-caps;">stops</span>] pipeline:
-* General [Python project structure](https://docs.python-guide.org/writing/structure/ "Structuring a Python project") applies
+* General [Python] [project structure](https://docs.python-guide.org/writing/structure/ "Structuring a Python project") applies
 * Docstrings follow the NumPy [documentation style](https://numpydoc.readthedocs.io/en/latest/format.html "NumPy style guide")
 * Classes and methods implement [typing](https://docs.python.org/3/library/typing.html "typing in Python") for type hinting
 * [Logging](https://realpython.com/python-logging/ "Logging in Python") is implemented
 * [Tests](https://docs.python-guide.org/writing/tests/ "Testing in Python") are planned but not implemented
+* [requirements.txt](./requirements.txt "Python requirements") was generated using `pipreqs`
+* The minimum required [Python] version was found using `vermin`
 
 ## License
 
 This project is licensed under the BSD 3-Clause License. See the [LICENSE](/LICENSE "STOPS License") for further details.
 
-
+<!-- Links & References -->
 [writeup]: <https://github.com/JustinotherGitter/Masters-Thesis/Thesis.pdf> (Justin Cooper - Master Thesis)
 
 [<span style="font-variant:small-caps;">iraf</span>]: <https://iraf-community.github.io/> (IRAF GitHub Repository)
@@ -214,3 +216,4 @@ This project is licensed under the BSD 3-Clause License. See the [LICENSE](/LICE
 
 [FITS]: <https://fits.gsfc.nasa.gov/standard40/fits_standard40aa-le.pdf> (FITS file standard)
 [RegEx]: <https://regexr.com/> (Basic RegEx test environment)
+[Python]: <https://www.python.org/> (The Python website)
