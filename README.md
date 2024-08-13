@@ -6,7 +6,7 @@
 
 To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, clone the repository and install the [dependencies](/requirements.txt "Requirements file"):
 
-```bash
+```console
 $ git clone https://github.com/JustinotherGitter/STOPS.git # or manually download the repository
 $ cd STOPS
 $ # Additionally create and activate a python3 `STOPS` venv
@@ -57,7 +57,7 @@ Alternate wavelength solutions may be used but must be:
 e.g.
 
 `cheb_params_e.txt`
-```text
+```text cheb_params_e.txt
 5
 5
 7419.096745914063
@@ -73,7 +73,7 @@ e.g.
 
 The [<span style="font-variant:small-caps;">stops</span>] pipeline is most generally controlled via a CLI. The basic format of commands follows:
 
-```bash
+```console
 $ <py_dir>python<3> <STOPS_dir>STOPS (General Options) [data_dir] MODE (Options) [File names]
 ```
 where:
@@ -82,12 +82,12 @@ where:
 * `()` parameters are optional, and
 * `[]` parameters are compulsory (unless otherwise stated).
 
-Below are the details of the [STOPS] options, the available Modes, and their respective sub-options.
+Below are the details of the [<span style="font-variant:small-caps;">stops</span>] options, the available Modes, and their respective sub-options.
 
-### [STOPS] Options
+### [<span style="font-variant:small-caps;">stops</span>] Options
 
 **Optional:**
-* `-V`, `--version`: Show the version of [STOPS].
+* `-V`, `--version`: Show the version of [<span style="font-variant:small-caps;">stops</span>].
 * `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
 * `-l`, `--log`: Specify the filename of the logging file, which is created if it does not exist.
 
@@ -97,12 +97,12 @@ Below are the details of the [STOPS] options, the available Modes, and their res
 ### Help Commands
 
 For detailed information on [<span style="font-variant:small-caps;">stops</span>], use the help command:
-```bash
+```console
 $ python STOPS . --help
 ```
 
 Help for each mode is also accessible, and may be viewed using the help command:
-```bash
+```console
 $ python STOPS . MODE --help
 ```
 where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines`](#skylines), or [`crosscorrelate`](#correlate).
@@ -113,7 +113,7 @@ where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines
 
 #### <ins>s</ins>plit
 
-```bash
+```console
 $ python STOPS . split (Options) [mxgbp*.fits]
 ```
 
@@ -131,7 +131,7 @@ $ python STOPS . split (Options) [mxgbp*.fits]
 
 #### <ins>j</ins>oin
 
-```bash
+```console
 $ python STOPS . join (Options) []
 ```
 
@@ -150,7 +150,7 @@ $ python STOPS . join (Options) []
 
 #### <ins>sky</ins>lines
 
-```bash
+```console
 $ python STOPS . skylines (Options) [Filenames]
 ```
 
@@ -173,7 +173,7 @@ $ python STOPS . skylines (Options) [Filenames]
 
 #### <ins>correlate</ins>
 
-```bash
+```console
 $ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 ```
 
