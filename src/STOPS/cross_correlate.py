@@ -3,8 +3,6 @@
 
 """Module for cross correlating polarization beams."""
 
-from __init__ import __author__, __email__, __version__
-
 # MARK: Imports
 import sys
 import logging
@@ -19,10 +17,8 @@ import matplotlib.axes
 from astropy.io import fits as pyfits
 from scipy import signal
 
-from utils.SharedUtils import find_files, continuum
-from utils.Constants import SAVE_CORR
-
-OFFSET = 0.3
+from STOPS.utils.SharedUtils import find_files, continuum
+from STOPS.utils.Constants import SAVE_CORR, OFFSET
 
 mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.INFO)

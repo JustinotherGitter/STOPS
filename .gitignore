@@ -1,13 +1,16 @@
 # Ignore byte-compiled files
 __pycache__/
+*/__pycache__/
 
 # Ignore local editor settings
-.vscode/
 .idea/
+.vscode/
 venv/
 
-# Ignore test data and tests
-test*/
+# Ignore unrelated package files
+build/
+tests/test_data/
+*/*.egg-info/
 
 # Ignore any 'Masters' entries
 Masters/
@@ -18,3 +21,4 @@ Masters.zip
 
 # Ignore Jupyter notebook files
 *.ipynb
+.ipynb_checkpoints/

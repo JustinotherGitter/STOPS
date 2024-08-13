@@ -1,0 +1,96 @@
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/
+# https://packaging.python.org/en/latest/tutorials/installing-packages/
+
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "STOPS"
+description = "Supplementary Tools for POLSALT Spectropolarimetry"
+readme = {file = "README.md", content-type = "text/markdown; charset=UTF-8"}
+license = {file = "LICENSE"}
+authors = [
+    {name = "Justin Cooper", email = "justin.jb78+Masters@gmail.com"}
+]
+maintainers = [
+    {name = "Justin Cooper", email = "justin.jb78+Masters@gmail.com"}
+]
+keywords = [
+    "astronomy",
+    "spectropolarimetry",
+    "tools"
+]
+classifiers = [
+    # Development Status
+    "Development Status :: 4 - Beta",
+
+    # Intended Usage
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+
+    # License
+    "License :: OSI Approved :: BSD License",
+
+    # Doc Language
+    "Natural Language :: English",
+
+    # Environments
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+
+    # Stop PyPI Upload
+    "Private :: Do Not Upload"
+]
+
+# Found using `vermin`
+requires-python = ">=3.10"
+
+# Found using `pipreqs`
+dependencies = [
+    "astropy >= 6.0.0",
+    "ccdproc >= 2.4.1",
+    "matplotlib >= 3.5.2",
+    "numpy >= 1.26.4",
+    "scipy >= 1.13.0"
+]
+
+# Found dynamically
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/JustinotherGitter/STOPS"
+Repository = "https://github.com/JustinotherGitter/STOPS.git"
+# Documentation = "https://github.com/JustinotherGitter/STOPS/wiki"
+
+[project.scripts]
+stops = "STOPS.__main__:main"
+
+# [tool]
+[tool.setuptools.dynamic]
+version = {attr = "STOPS.__version__"}
+
+[tool.black]
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[project.optional-dependencies]
+tests = [
+    "pytest >= 6.0"
+]
+# gui or cli or dev = [
+#     "sphinx",
+#     "black",
+#     "flake8",
+#     etc.
+# ]
+
+# Advanced plugins
+# [project.entry-points."STOPS.magical"]
+# A_name = "STOPS:main_eg"

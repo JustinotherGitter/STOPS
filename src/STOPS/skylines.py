@@ -5,8 +5,6 @@
 Module for analyzing the sky lines of a wavelength calibrated image.
 """
 
-from __init__ import __author__, __email__, __version__
-
 # MARK: Imports
 import sys
 import logging
@@ -18,8 +16,8 @@ import matplotlib.axes
 from astropy.io import fits as pyfits
 from scipy import signal
 
-from utils.SharedUtils import find_files
-from utils.Constants import SAVE_SKY, FIND_PEAK_PARAMS, ARC_FILE
+from STOPS.utils.SharedUtils import find_files
+from STOPS.utils.Constants import SAVE_SKY, FIND_PEAK_PARAMS, ARC_FILE
 
 # print(
 #  [logging.getLogger(name) for name in logging.root.manager.loggerDict]

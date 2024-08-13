@@ -15,10 +15,10 @@ $ pip install -r requirements.txt
 
 ## Classes
 
-* [**Split**](/split.py): Separate the pre-processed [<span style="font-variant:small-caps;">polsalt</span>] [FITS] files by their perpendicular polarization beams into two [<span style="font-variant:small-caps;">iraf</span>] parsable [FITS] files.
-* [**Join**](/join.py): Combine external wavelength calibration solutions with the perpendicular beams, as expected by [<span style="font-variant:small-caps;">polsalt</span>]'s `spectral extraction`
-* [**Skylines**](/skylines.py): Automatically identify and calculate the difference between [known](http://pysalt.salt.ac.za/lineatlas/sky_strengths.txt "SALT identified sky lines") and observed sky lines (or [arc lines](https://astronomers.salt.ac.za/data/salt-longslit-line-atlas/ "SALT arc lines available for calibration")) in wavelength calibrated spectropolarimetric data.
-* [**CrossCorrelate**](/cross_correlate.py): Perform cross-correlation analysis on the spectropolarimetric data (possible after [<span style="font-variant:small-caps;">polsalt</span>]'s `spectral extraction`), either for each file comparing the perpendicular polarization beams, or across multiple files comparing a singular polarization beam.
+* [**Split**](/src/STOPS/split.py): Separate the pre-processed [<span style="font-variant:small-caps;">polsalt</span>] [FITS] files by their perpendicular polarization beams into two [<span style="font-variant:small-caps;">iraf</span>] parsable [FITS] files.
+* [**Join**](/src/STOPS/join.py): Combine external wavelength calibration solutions with the perpendicular beams, as expected by [<span style="font-variant:small-caps;">polsalt</span>]'s `spectral extraction`
+* [**Skylines**](/src/STOPS/skylines.py): Automatically identify and calculate the difference between [known](http://pysalt.salt.ac.za/lineatlas/sky_strengths.txt "SALT identified sky lines") and observed sky lines (or [arc lines](https://astronomers.salt.ac.za/data/salt-longslit-line-atlas/ "SALT arc lines available for calibration")) in wavelength calibrated spectropolarimetric data.
+* [**CrossCorrelate**](/src/STOPS/cross_correlate.py): Perform cross-correlation analysis on the spectropolarimetric data (possible after [<span style="font-variant:small-caps;">polsalt</span>]'s `spectral extraction`), either for each file comparing the perpendicular polarization beams, or across multiple files comparing a singular polarization beam.
 
 ## Procedure
 A simplistic workflow is provided below, for further information and implementation please see the [write-up] of [<span style="font-variant:small-caps;">stops</span>].
@@ -197,11 +197,24 @@ $ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 Contributions are welcome! Please fork the repository and create a pull request with your changes. The following styles are broadly implemented, and serve as a collection of references used when creating the [<span style="font-variant:small-caps;">stops</span>] pipeline:
 * General [Python] [project structure](https://docs.python-guide.org/writing/structure/ "Structuring a Python project") applies
 * Docstrings follow the NumPy [documentation style](https://numpydoc.readthedocs.io/en/latest/format.html "NumPy style guide")
+    * Possible `sphinx` docs?
 * Classes and methods implement [typing](https://docs.python.org/3/library/typing.html "typing in Python") for type hinting
 * [Logging](https://realpython.com/python-logging/ "Logging in Python") is implemented
 * [Tests](https://docs.python-guide.org/writing/tests/ "Testing in Python") are planned but not implemented
-* [requirements.txt](./requirements.txt "Python requirements") was generated using `pipreqs`
-* The minimum required [Python] version was found using `vermin`
+    * `pytest` or `unittest` (`pytest-cov` | `tox`)?
+* [requirements.txt](./requirements.txt "Python requirements") was generated using [`pipreqs`](https://pypi.org/project/pipreqs/ "`pipreqs` PyPI page")
+* The minimum required [Python] version was found using [`vermin`](https://pypi.org/project/vermin/ "`vermin` PyPI page")
+* [<span style="font-variant:small-caps;">stops</span>] management
+    * Built using:
+    ```console
+    cd /media/justin/Transcend/STOPS
+    python3 -m build
+    ```
+    * Installed using `pip` in an editable format (exclude `-e` for `stable` release):
+    ```console
+    cd /media/justin/Transcend/STOPS
+    pip install -e ../STOPS
+    ```
 
 ## License
 

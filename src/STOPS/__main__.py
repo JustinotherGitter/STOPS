@@ -1,9 +1,7 @@
-"""Argument parser for STOPS."""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from __init__ import __version__, __author__, __email__
+"""Argument parser for STOPS."""
 
 # MARK: Imports
 import os
@@ -12,13 +10,10 @@ import argparse
 import logging
 from pathlib import Path
 
-from split import Split
-from join import Join
-from cross_correlate import CrossCorrelate
-from skylines import Skylines
-
-from utils import ParserUtils as pu
-from utils.Constants import SPLIT_ROW, PREFIX, PARSE, SAVE_CORR, SAVE_SKY
+from STOPS import __version__
+from STOPS import Split, Join, CrossCorrelate, Skylines
+from STOPS.utils import ParserUtils as pu
+from STOPS.utils.Constants import SPLIT_ROW, PREFIX, PARSE, SAVE_CORR, SAVE_SKY
 
 # MARK: Constants
 PROG = "STOPS"
@@ -162,20 +157,6 @@ corr_sky_args.add_argument(
     action="store_true",
     help="Flag for additional plot outputs.",
 )
-corr_sky_args.add_argument(
-    "-s",
-    "--save_prefix",
-    action="store",
-    nargs="?",
-    type=lambda path: Path(path).expanduser().resolve(),
-    const=SAVE_CORR,
-    help=(
-        "Prefix used when saving plot. "
-        "Excluding flag does not save output plot, "
-        f"flag usage of option uses default prefix, "
-        "and a provided prefix overwrites default prefix."
-    ),
-)
 
 
 # MARK: Create subparser modes
@@ -234,7 +215,7 @@ corr_parser = subparsers.add_parser(
     help="Cross correlation mode",
     parents=[corr_sky_args],
 )
-# 'children' join args here
+# 'children' correlate args here
 corr_parser.add_argument(
     "-o",
     "--offset",
@@ -245,6 +226,20 @@ corr_parser.add_argument(
         "known offset in spectra or for testing purposes. "
         f"Defaults to {PARSE['OFFSET']}. "
         "(For testing, not used during regular operation.)"
+    ),
+)
+corr_parser.add_argument(
+    "-s",
+    "--save_prefix",
+    action="store",
+    nargs="?",
+    type=lambda path: Path(path).expanduser().resolve(),
+    const=SAVE_CORR,
+    help=(
+        "Prefix used when saving plot. "
+        "Excluding flag does not save output plot, "
+        f"flag usage of option uses default prefix, "
+        "and a provided prefix overwrites default prefix."
     ),
 )
 # Change defaults here
@@ -270,6 +265,20 @@ sky_parser.add_argument(
         "Flag to force transform images. "
         "Recommended to use only when input image(s) "
         "are prefixed 't' but are not yet transformed."
+    ),
+)
+sky_parser.add_argument(
+    "-s",
+    "--save_prefix",
+    action="store",
+    nargs="?",
+    type=lambda path: Path(path).expanduser().resolve(),
+    const=SAVE_SKY,
+    help=(
+        "Prefix used when saving plot. "
+        "Excluding flag does not save output plot, "
+        f"flag usage of option uses default prefix, "
+        "and a provided prefix overwrites default prefix."
     ),
 )
 # Change defaults here

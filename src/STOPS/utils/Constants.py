@@ -24,7 +24,6 @@ DEFAULT_DIR = os.getcwd()
 # Best crop from usage, PG0300 with Ar arc lamp
 CROP_DEFAULT = 40
 
-
 # Parser defaults
 PARSE = {
     "VERBOSE": 0,  # 0, 1, 2 see ParserUtils.parse_loglevel
@@ -56,3 +55,6 @@ FIND_PEAK_PARAMS = {
 }
 
 ARC_FILE = 'Argon_lores.txt' # 'NeAr.txt' | 'ThAr.txt' | 'Xe.txt'
+
+# Cross Correlation Parameters
+OFFSET = 0.3

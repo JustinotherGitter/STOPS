@@ -3,8 +3,6 @@
 
 """Module for splitting ``polsalt`` FITS files."""
 
-from __init__ import __author__, __email__, __version__
-
 # MARK: Imports
 import os
 import sys
@@ -15,12 +13,13 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits as pyfits
 
-from utils.SharedUtils import find_files, find_arc
-from utils.Constants import SAVE_PREFIX, CROP_DEFAULT, SPLIT_ROW
+from STOPS.utils.SharedUtils import find_files, find_arc
+from STOPS.utils.Constants import SAVE_PREFIX, CROP_DEFAULT, SPLIT_ROW
 
 
 # MARK: Split Class
 class Split:
+    
     #----------split0----------
 
     """

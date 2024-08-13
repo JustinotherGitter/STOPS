@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Module for joining the split FITS files with an external wavelength solution."""
-
-from __init__ import __author__, __email__, __version__
+"""
+Module for joining the split FITS files with an external wavelength solution.
+"""
 
 # MARK: Imports
 import os
@@ -20,13 +20,14 @@ from astropy.io import fits as pyfits
 # from lacosmic import lacosmic # Replaced: ccdproc is ~6x faster
 from ccdproc import cosmicray_lacosmic as lacosmic
 
-from utils.specpolpy3 import read_wollaston, split_sci
-from utils.SharedUtils import find_files, find_arc
-from utils.Constants import DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
+from STOPS.utils.specpolpy3 import read_wollaston, split_sci
+from STOPS.utils.SharedUtils import find_files, find_arc
+from STOPS.utils.Constants import DATADIR, SAVE_PREFIX, SPLIT_ROW, CR_PARAMS
 
 
 # MARK: Join Class
 class Join:
+    
     #----------join0----------
 
     """
@@ -361,6 +362,7 @@ class Join:
 
             # No differences in "PRIMARY" extention header
             primary_ext = hdu["PRIMARY"]
+            primary_ext.header["HISTORY"] = f"CRCLEAN: {CR_PARAMS}"
             whdu.append(primary_ext)
 
             for ext in ["SCI", "VAR", "BPM"]:
