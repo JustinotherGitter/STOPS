@@ -1,12 +1,12 @@
 """Supplementary TOols for Polsalt Spectropolarimetry (STOPS)"""
 
+__all__ = ["Split", "Join", "CrossCorrelate", "Skylines", "__version__"]
+
 from .split import Split
 from .join import Join
 from .cross_correlate import CrossCorrelate
 from .skylines import Skylines
 
-__all__ = ["Split", "Join", "CrossCorrelate", "Skylines"]
- 
 __version__ = "2024.08.13"
 # "Production", "Prototype", "Deprecated"
 __status__ = "Development"

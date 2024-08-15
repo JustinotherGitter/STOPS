@@ -135,7 +135,7 @@ class CrossCorrelate:
             plot: bool = False,
             offset: int = 0,
             save_prefix: Path | None = None,
-            **kwargs
+            **kwargs,
     ) -> None:
         self.data_dir = data_dir
         self.fits_list = find_files(

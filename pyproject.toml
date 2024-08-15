@@ -17,6 +17,12 @@ authors = [
 maintainers = [
     {name = "Justin Cooper", email = "justin.jb78+Masters@gmail.com"}
 ]
+# Found using `vermin`
+requires-python = ">=3.10"
+
+# Found dynamically
+dynamic = ["version", "dependencies"]
+
 keywords = [
     "astronomy",
     "spectropolarimetry",
@@ -47,21 +53,6 @@ classifiers = [
     "Private :: Do Not Upload"
 ]
 
-# Found using `vermin`
-requires-python = ">=3.10"
-
-# Found using `pipreqs`
-dependencies = [
-    "astropy >= 6.0.0",
-    "ccdproc >= 2.4.1",
-    "matplotlib >= 3.5.2",
-    "numpy >= 1.26.4",
-    "scipy >= 1.13.0"
-]
-
-# Found dynamically
-dynamic = ["version"]
-
 [project.urls]
 Homepage = "https://github.com/JustinotherGitter/STOPS"
 Repository = "https://github.com/JustinotherGitter/STOPS.git"
@@ -69,16 +60,6 @@ Repository = "https://github.com/JustinotherGitter/STOPS.git"
 
 [project.scripts]
 stops = "STOPS.__main__:main"
-
-# [tool]
-[tool.setuptools.dynamic]
-version = {attr = "STOPS.__version__"}
-
-[tool.black]
-line-length = 88
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
 
 [project.optional-dependencies]
 tests = [
@@ -94,3 +75,16 @@ tests = [
 # Advanced plugins
 # [project.entry-points."STOPS.magical"]
 # A_name = "STOPS:main_eg"
+
+# [tool]
+[tool.setuptools.dynamic]
+# Found in __init__.py
+version = {attr = "STOPS.__version__"}
+# Found using `pipreqs`
+dependencies = {file = ["requirements.txt"]}
+
+[tool.black]
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

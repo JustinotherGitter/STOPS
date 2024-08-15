@@ -106,7 +106,7 @@ class Split:
             split_row: int = SPLIT_ROW,
             no_arc: bool = False,
             save_prefix: Path | None = None,
-            **kwargs
+            **kwargs,
     ) -> None:
         self.data_dir = data_dir
         self.fits_list = find_files(

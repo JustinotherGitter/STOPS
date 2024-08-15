@@ -4,7 +4,6 @@
 """Argument parser for STOPS."""
 
 # MARK: Imports
-import os
 import sys
 import argparse
 import logging
@@ -12,7 +11,7 @@ from pathlib import Path
 
 from STOPS import __version__
 from STOPS import Split, Join, CrossCorrelate, Skylines
-from STOPS.utils import ParserUtils as pu
+from STOPS.utils import ParserUtils as Parser
 from STOPS.utils.Constants import SPLIT_ROW, PREFIX, PARSE, SAVE_CORR, SAVE_SKY
 
 # MARK: Constants
@@ -54,7 +53,7 @@ parser.add_argument(
     "-l",
     "--log",
     action="store",
-    type=pu.parse_logfile,
+    type=Parser.parse_logfile,
     help=(
         "Filename of the logging file. "
         "File is created if it does not exist. Defaults to None."
@@ -65,7 +64,7 @@ parser.add_argument(
     action="store",
     nargs="?",
     default=PARSE['DATA_DIR'],
-    type=pu.parse_path,
+    type=Parser.parse_path,
     help=(
         "Path of the directory which contains the working data. "
         f"Defaults to the cwd -> `{PARSE['DATA_DIR']}` (I.E. '.')."
@@ -110,7 +109,7 @@ corr_sky_args.add_argument(
     "filenames",
     action="store",
     nargs="+",
-    type=pu.parse_file,
+    type=Parser.parse_file,
     help=(
         "File name(s) of FITS file(s) to be processed."
         "A minimum of one filename is required."
@@ -194,7 +193,7 @@ join_parser.add_argument(
     "--coefficients",
     dest="solutions_list",
     nargs='*',
-    type=pu.parse_file,
+    type=Parser.parse_file,
     help=(
         "Custom coefficients to use instead of the `IRAF` fitcoords "
         "database. Use as either '-c <o_solution> <e_solution>' or "
@@ -295,16 +294,16 @@ if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
     sys.exit(2)
 
-args.verbose = pu.parse_loglevel(args.verbose)
+args.verbose = Parser.parse_loglevel(args.verbose)
 
 if 'log' in args and args.log not in ["", None]:
     args.log = args.data_dir / args.log
 
 if "filenames" in args:
-    args.filenames = pu.flatten(args.filenames)
+    args.filenames = Parser.flatten(args.filenames)
 
-if "solutions_list" in args and type(args.solutions_list) == list:
-    args.solutions_list = pu.flatten(args.solutions_list)
+if "solutions_list" in args and isinstance(args.solutions_list, list):
+    args.solutions_list = Parser.flatten(args.solutions_list)
 
 # MARK: Begin logging
 logging.basicConfig(
