@@ -9,6 +9,7 @@ Module for analyzing the sky lines of a wavelength calibrated image.
 import sys
 import logging
 from pathlib import Path
+from importlib.resources import files
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,8 +17,11 @@ import matplotlib.axes
 from astropy.io import fits as pyfits
 from scipy import signal
 
-from STOPS.utils.SharedUtils import find_files
-from STOPS.utils.Constants import SAVE_SKY, FIND_PEAK_PARAMS, ARC_FILE
+from STOPS.utils.SharedUtils import find_files, get_arc_lamp
+from STOPS.utils.Constants import SAVE_SKY, FIND_PEAK_PARAMS
+import STOPS.data
+import STOPS.utils
+import STOPS.data.RSS_arc
 
 # print(
 #  [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -102,6 +106,9 @@ class Skylines:
             ext="fits",
             sep_arc=True,
         )
+        if self.arc_list:
+            self.arc_lamp = get_arc_lamp(self.arc_list[0])
+
         self._beams = None
         self.beams = beams
         self.ccds = 1
@@ -304,7 +311,7 @@ class Skylines:
         ----------
         filename : str | Path | None, optional
             The path to the file to be loaded.
-            Defaults to loading the skylines from `utils/sky.salt`
+            Defaults to loading the skylines from `data/sky.salt`
         dtype : list[tuple], optional
             The data type of the sky lines.
             (Default is [('wav', float), ('flux', float)])
@@ -321,12 +328,14 @@ class Skylines:
             The sky lines from the file.
         
         """
+        lines: np.ndarray = None
+        
         usecols = None
         if filename:
-            filename = Path(__file__).parent.resolve() / filename
+            filename = files(STOPS.data.RSS_arc).joinpath(filename)
             usecols = (0, 1)
         else:
-            filename = Path(__file__).parent.resolve() / 'utils/sky.salt'
+            filename = files(STOPS.data).joinpath('sky.salt')
 
         lines = np.genfromtxt(
             filename,
@@ -527,8 +536,8 @@ class Skylines:
             arc: bool = False,
     ) -> None:
         plt.style.use([
-            Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle',
-            Path(__file__).parent.resolve() / 'utils/STOPS_skylines.mplstyle'
+            files(STOPS.utils).joinpath('STOPS.mplstyle'),
+            files(STOPS.utils).joinpath('STOPS_skylines.mplstyle'),
         ])
         plt.rcParams['figure.subplot.hspace'] *= len(self.beams)
 
@@ -537,7 +546,7 @@ class Skylines:
 
         # Load known lines
         if arc:
-            lines = self.load_lines(filename=f'utils/RSS_arc_files/{ARC_FILE}')
+            lines = self.load_lines(filename=self.arc_lamp)
         else:
             lines = self.load_lines()
 

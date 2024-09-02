@@ -8,6 +8,7 @@ import sys
 import logging
 import itertools as iters
 from pathlib import Path
+from importlib.resources import files
 from typing import Callable
 
 import numpy as np
@@ -19,6 +20,7 @@ from scipy import signal
 
 from STOPS.utils.SharedUtils import find_files, continuum
 from STOPS.utils.Constants import SAVE_CORR, OFFSET
+import STOPS.utils
 
 mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.INFO)
@@ -384,8 +386,8 @@ class CrossCorrelate:
 
                 # Invert BPM (and account for 2); zero bad pixels
                 sig.append((
-                        spec[ext, lb:ub]
-                        * abs(bpm[ext, lb:ub] * -1 + 1)
+                    spec[ext, lb:ub]
+                    * abs(bpm[ext, lb:ub].astype(np.int8) * -1 + 1)
                 ))
 
             # Finally(!!!) cross correlate signals and scale max -> 1
@@ -464,8 +466,8 @@ class CrossCorrelate:
 
         """
         plt.style.use([
-            Path(__file__).parent.resolve() / 'utils/STOPS.mplstyle',
-            Path(__file__).parent.resolve() / 'utils/STOPS_correlate.mplstyle'
+            files(STOPS.utils).joinpath('STOPS.mplstyle'),
+            files(STOPS.utils).joinpath('STOPS_correlate.mplstyle'),
         ])
         bounds = self.get_bounds(bpm)
 
@@ -492,7 +494,9 @@ class CrossCorrelate:
 
                 axs[1, ccd].plot(
                     wav[ext, lb:ub],
-                    spec[ext, lb:ub] * abs(bpm[ext, lb:ub] * -1 + 1) + OFFSET * ext,
+                    spec[ext, lb:ub]
+                    * abs(bpm[ext, lb:ub].astype(np.int8) * -1 + 1)
+                    + OFFSET * ext,
                     label=(
                         f"${self.beams if self.beams != 'OE' else self.beams[ext]}"
                         f"_{ext + 1 if self.beams != 'OE' else 1}$"
