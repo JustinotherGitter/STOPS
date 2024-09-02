@@ -260,6 +260,18 @@ The following styles are broadly implemented, and serve as a collection of refer
     pip install -e ../STOPS
     ```
 
+## See Also
+
+* Package creation:
+  * <https://packaging.python.org/en/latest/guides/writing-pyproject-toml/>
+  * <https://packaging.python.org/en/latest/tutorials/packaging-projects/>
+  * <https://packaging.python.org/en/latest/tutorials/installing-packages/>
+
+* Package resources
+  * <https://docs.python.org/3.11/library/importlib.resources.html>
+  * <https://importlib-resources.readthedocs.io/en/latest/using.html>
+  * <https://setuptools.pypa.io/en/latest/userguide/datafiles.html>
+
 ## License
 
 This project is licensed under the BSD 3-Clause License.
