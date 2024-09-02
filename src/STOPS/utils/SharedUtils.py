@@ -13,8 +13,20 @@ from scipy import signal
 
 # MARK: Is Arc
 def is_arc(file: Path) -> bool:
-    return pyfits.open(file)["PRIMARY"].header["OBJECT"] == "ARC"
+    is_arc: bool = False
+    with pyfits.open(file) as hdul:
+        is_arc = hdul["PRIMARY"].header["OBJECT"] == "ARC"
+    
+    return is_arc
 
+# MARK: Get Arc Lamp
+def get_arc_lamp(file: Path) -> str:
+    lamp: str = ""
+    with pyfits.open(file) as hdul:
+        lamp = hdul["PRIMARY"].header["LAMPID"]
+
+    lamp += '.txt'
+    return lamp
 
 # MARK: Find files
 def find_files(

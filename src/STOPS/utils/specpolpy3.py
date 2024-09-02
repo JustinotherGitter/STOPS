@@ -42,8 +42,8 @@ def rssmodelwave(grating,grang,artic,trkrho,cbin,cols,datobs):
     Grat0,Home0,ArtErr,T2Con,T3Con = spec_dp[:5]
     FCampoly=spec_dp[5:]
 
-    grname=np.loadtxt(DATADIR+"gratings.txt",dtype=str,usecols=(0,))
-    grlmm,grgam0=np.loadtxt(DATADIR+"gratings.txt",usecols=(1,2),unpack=True)
+    grname=np.loadtxt(DATADIR+"gratings.txt",dtype=str,usecols=(0,),skiprows=2)
+    grlmm,grgam0=np.loadtxt(DATADIR+"gratings.txt",usecols=(1,2),skiprows=2,unpack=True)
     grnum = np.where(grname==grating)[0][0]
     lmm = grlmm[grnum]
     alpha_r = np.radians(grang+Grat0)

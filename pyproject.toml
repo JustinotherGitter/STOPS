@@ -77,6 +77,15 @@ tests = [
 # A_name = "STOPS:main_eg"
 
 # [tool]
+# [tool.setuptools]
+# Default is true
+# include-package-data = true
+
+[tool.setuptools.package-data]
+"STOPS.data" = ["*.salt"]
+"STOPS.data.RSS_arc" = ["*.txt"]
+"STOPS.utils" = ["*.mplstyle"]
+
 [tool.setuptools.dynamic]
 # Found in __init__.py
 version = {attr = "STOPS.__version__"}
