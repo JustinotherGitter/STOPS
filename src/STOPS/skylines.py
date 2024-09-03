@@ -205,12 +205,12 @@ class Skylines:
                 )
                 axs[ext].plot(
                     peaks[ext],
-                    row_means[peaks[ext]],
+                    row_means[ext][peaks[ext]],
                     "x",
                     label=f"{'E' if ext else 'O'} peaks"
                 )
                 axs[ext].legend()
-                plt.show()
+            plt.show()
 
         logging.debug(f"find_peaks - peaks: {[len(i) for i in peaks]}")
         logging.debug(f"find_peaks - props: {[key for key in props[0].keys()]}")
@@ -567,7 +567,8 @@ class Skylines:
         for fl in range(len(self.arc_list if arc else self.fits_list)):
 
             # set color cycle
-            color = next(axs[0, 0]._get_lines.prop_cycler)['color']
+            # color = next(axs[0, 0]._get_lines.prop_cycler)['color'] # private deprecated
+            color = axs[0, 0]._get_lines.get_next_color()
 
             for ext in range(len(self.beams)):
 

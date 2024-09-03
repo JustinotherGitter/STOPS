@@ -166,7 +166,7 @@ class Join:
             self,
             wavlist: list[str] | None,
             prefix: str = "fc",
-            reverse: bool = True,
+            reverse: bool = False,
     ) -> tuple[list[str], bool]:
         """
         Get the list of wavelength solution files.
@@ -183,7 +183,7 @@ class Join:
         reverse : bool, optional
             Whether to reverse the wavelength solution files.
             Necessary when `wavlist` ordered ['O', 'E']
-            (Defaults to True)
+            (Defaults to False)
 
         Returns
         -------

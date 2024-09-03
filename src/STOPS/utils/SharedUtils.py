@@ -106,7 +106,7 @@ def find_files(
         logging.error(errMsg)
         raise FileNotFoundError(errMsg)
 
-    if sep_arc and valid_arcs:
+    if sep_arc:
         logging.debug(f"find_files - {valid} and {valid_arcs}")
         return [Path(data_dir) / fl for fl in valid], [Path(data_dir) / fl for fl in valid_arcs]
     
