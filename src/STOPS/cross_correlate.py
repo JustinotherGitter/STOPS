@@ -154,6 +154,11 @@ class CrossCorrelate:
             with pyfits.open(self.fits_list[0]) as hdu:
                 self.ccds = sum(hdu["BPM"].data.sum(axis=1)[0] == 2)
 
+            if self.ccds == 0:
+                self.ccds = 3
+                err_msg = f"BPM ext. of {self.fits_list[0].name} contains no `2` near center of CCD."
+                logging.warning(err_msg)
+
         self.cont_ord = cont_ord
         self.can_plot = plot
         self.offset = offset
@@ -177,7 +182,7 @@ class CrossCorrelate:
                 f"Saving under {self.save_prefix}"
             ))
 
-        self.wav_unit = "$\AA$"
+        self.wav_unit = "$\\AA$"
         self.wav_cdelt = 1
 
         self.alt = self.ftcs if kwargs.get("ftcs") else None
@@ -504,7 +509,7 @@ class CrossCorrelate:
                     ),
                 )
 
-        axs[0, 0].set_ylabel("Normalised Correlation\n(\%)")
+        axs[0, 0].set_ylabel("Normalised Correlation\n($\\%$)")
         for ax in axs[1:, 0]:
             ax.set_ylabel("Normalised Intensity\n(Counts)")
         xcol = int(self.ccds != 1)

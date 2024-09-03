@@ -131,7 +131,7 @@ class Skylines:
 
         self.max_difference = 5
 
-        self.wav_unit = "$\AA$"
+        self.wav_unit = "$\\AA$"
 
         logging.debug("__init__ - \n", self.__dict__)
 
@@ -661,9 +661,9 @@ class Skylines:
             for x in lines['wav'][ok]:
                 axs[0, ccd].axvline(x, ls='dashed', c='0.7')
 
-        axs[0, 0].set_ylabel("Rel. Intensity ($\%$)")
+        axs[0, 0].set_ylabel("Rel. Intensity ($\\%$)")
         axs[1, 0].set_ylabel(
-            "Closest Peak ($\Delta\lambda$)"
+            "Closest Peak ($\\Delta\\lambda$)"
         )
         # for ax in axs[:, 0]:
         #     ax.legend(loc='upper left', ncols=(fl + 1) * (ext + 1) + 1)
