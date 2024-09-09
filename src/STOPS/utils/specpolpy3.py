@@ -94,6 +94,34 @@ def correct_wollaston(data, drow_shift):
 
 ############################################################################################
 
+def ccdcenter(image_rc: np.ndarray) -> np.ndarray:
+    """
+    Find gaps and center of ccd image
+
+    Parameters:
+    image_rc: 2d image
+
+    Returns: cedge_c (int column of ccd edges)
+
+    """
+    image_c = image_rc.mean(axis=0)
+    rows, cols = image_rc.shape
+    cstart = 0
+    cedge_id = np.zeros((3, 2), dtype=int)
+    for i in (0, 1, 2):
+        cedge_id[i, 0] = np.argmax(
+            (image_c[cstart: ] != 0) & (image_c[cstart: ] != -1)
+        ) + cstart
+        cedge_id[i, 1] = np.argmax(
+            (image_c[cedge_id[i, 0]: ] == 0) | (image_c[cedge_id[i, 0]: ] == -1)
+        ) + cedge_id[i, 0] - 1
+
+        if cedge_id[i, 1] == cedge_id[i, 0] - 1:
+            cedge_id[i, 1] = cols - 1
+
+        cstart = cedge_id[i, 1] + 1
+
+    return cedge_id
 
 def split_sci(hdulist, splitrow, ext="SCI"):
     """

@@ -7,7 +7,15 @@ For an in-depth discussion and usage, see the [<span style="font-variant:small-c
 
 ## Installation
 
-To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, clone the repository and install the [dependencies](/requirements.txt "Requirements file"):
+To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, simply download the wheel file and run:
+
+```console
+cd ~/Downloads
+# Activate any conda environment
+pip install STOPS
+```
+
+The repository may also be cloned and the [dependencies](/requirements.txt "Requirements file") installed:
 
 ```console
 git clone https://github.com/JustinotherGitter/STOPS.git # or manually download the repository
@@ -15,6 +23,8 @@ cd STOPS
 # Additionally create and activate a python3 `STOPS` venv
 pip install -r requirements.txt
 ```
+
+Note that [<span style="font-variant:small-caps;">stops</span>] also requires $\LaTeX$ to be installed as well as to have [<span style="font-variant:small-caps;">polsalt</span>] installed in the Home, `~/`, directory.
 
 ## Classes
 

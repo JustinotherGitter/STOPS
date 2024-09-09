@@ -63,8 +63,8 @@ def parse_logfile(logfile: str) -> str | None:
         return ""
 
     # Return valid 'LOGFILE.log'
-    logfile = logfile.upper()
-    if logfile.endswith(".LOG"):
+    # logfile = logfile.upper()
+    if logfile.endswith(".LOG") or logfile.endswith(".log"):
         logfile = logfile[:-4]
     logfile += ".log"
 

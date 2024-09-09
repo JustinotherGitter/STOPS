@@ -20,6 +20,7 @@ from scipy import signal
 
 from STOPS.utils.SharedUtils import find_files, continuum
 from STOPS.utils.Constants import SAVE_CORR, OFFSET
+from STOPS.utils.specpolpy3 import ccdcenter
 import STOPS.utils
 
 mpl_logger = logging.getLogger('matplotlib')
@@ -148,16 +149,13 @@ class CrossCorrelate:
         )
         self._beams = None
         self.beams = beams
+
         self.ccds = 1
         if split_ccd:
-            # BPM == 2 near center of CCD if CCD count varies
-            with pyfits.open(self.fits_list[0]) as hdu:
-                self.ccds = sum(hdu["BPM"].data.sum(axis=1)[0] == 2)
-
-            if self.ccds == 0:
-                self.ccds = 3
-                err_msg = f"BPM ext. of {self.fits_list[0].name} contains no `2` near center of CCD."
-                logging.warning(err_msg)
+            # with pyfits.open(self.fits_list[0]) as hdu:
+                ## BPM == 2 near center of CCD (extract version != *_sc)
+                # self.ccds = sum(hdu["BPM"].data.sum(axis=1)[0] == 2)
+            self.ccds = 3
 
         self.cont_ord = cont_ord
         self.can_plot = plot
@@ -270,13 +268,19 @@ class CrossCorrelate:
 
         # Get lower and upper bound for each ccd, save to bounds
         # Lower -> min is zero, Upper -> max is bpm length
-        for ext, ccd in iters.product(range(2), range(self.ccds)):
-            mid = np.where(bpm[ext] == 2)[0][ccd]
-            ccds = self.ccds * 2
-            bounds[ext, ccd] = (
-                max(mid - bpm.shape[-1] // ccds, 0),
-                min(mid + bpm.shape[-1] // ccds, bpm.shape[-1])
-            )
+        # for ext, ccd in iters.product(range(2), range(self.ccds)):
+        #     mid = np.where(bpm[ext] == 2)[0][ccd]
+        #     ccds = self.ccds * 2
+        #     bounds[ext, ccd] = (
+        #         max(mid - bpm.shape[-1] // ccds, 0),
+        #         min(mid + bpm.shape[-1] // ccds, bpm.shape[-1])
+        #     )
+
+        for ext in range(2):
+            cedge = ccdcenter(bpm[ext])
+            bounds[ext] = np.array(cedge)
+
+        logging.debug(f"get_bounds - found bounds at \n{bounds}")
 
         return bounds.astype(int)
 
