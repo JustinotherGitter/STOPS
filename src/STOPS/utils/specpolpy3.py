@@ -104,8 +104,13 @@ def ccdcenter(image_rc: np.ndarray) -> np.ndarray:
     Returns: cedge_c (int column of ccd edges)
 
     """
-    image_c = image_rc.mean(axis=0)
-    rows, cols = image_rc.shape
+    if image_rc.ndim == 1:
+        image_c = image_rc
+        cols = len(image_c)
+    else:
+        image_c = image_rc.mean(axis=0)
+        rows, cols = image_rc.shape
+
     cstart = 0
     cedge_id = np.zeros((3, 2), dtype=int)
     for i in (0, 1, 2):
