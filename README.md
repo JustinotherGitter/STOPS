@@ -5,6 +5,7 @@
 This pipeline provides a command-line interface (CLI) that can call four main classes, each implementing a unique function: `Split`, `Join`, `Skylines`, and `CrossCorrelate`.
 For an in-depth discussion and usage, see the [<span style="font-variant:small-caps;">stops</span>] [writeup].
 
+<!-- MARK: Install -->
 ## Installation
 
 To install the [<span style="font-variant:small-caps;">stops</span>] pipeline, simply download the wheel file and run:
@@ -24,8 +25,9 @@ cd STOPS
 pip install -r requirements.txt
 ```
 
-Note that [<span style="font-variant:small-caps;">stops</span>] also requires $\LaTeX$ to be installed as well as to have [<span style="font-variant:small-caps;">polsalt</span>] installed in the Home, `~/`, directory.
+**Note:** [<span style="font-variant:small-caps;">stops</span>] also requires $\LaTeX$ to be installed as well as to have [<span style="font-variant:small-caps;">polsalt</span>] installed in the Home, `~/`, directory.
 
+<!-- MARK: Classes -->
 ## Classes
 
 * [**Split**](/src/STOPS/split.py): Separate the pre-processed [<span style="font-variant:small-caps;">polsalt</span>] [FITS] files by their perpendicular polarization beams into two [<span style="font-variant:small-caps;">iraf</span>] parsable [FITS] files.
@@ -33,6 +35,7 @@ Note that [<span style="font-variant:small-caps;">stops</span>] also requires $\
 * [**Skylines**](/src/STOPS/skylines.py): Automatically identify and calculate the difference between [known](http://pysalt.salt.ac.za/lineatlas/sky_strengths.txt "SALT identified sky lines") and observed sky lines (or [arc lines](https://astronomers.salt.ac.za/data/salt-longslit-line-atlas/ "SALT arc lines available for calibration")) in wavelength calibrated spectropolarimetric data.
 * [**CrossCorrelate**](/src/STOPS/cross_correlate.py): Perform cross-correlation analysis on the spectropolarimetric data (possible after [<span style="font-variant:small-caps;">polsalt</span>]'s `spectral extraction`), either for each file comparing the perpendicular polarization beams, or across multiple files comparing a singular polarization beam.
 
+<!-- MARK: Procedure -->
 ## Procedure
 
 A simplistic workflow is provided below, for further information and implementation please see the [write-up] of [<span style="font-variant:small-caps;">stops</span>].
@@ -51,6 +54,7 @@ A simplistic workflow is provided below, for further information and implementat
 10. Polarization calculations are performed via [<span style="font-variant:small-caps;">polsalt</span>].
 11. Flux calibration may be performed using the `astropy` and `scipy` packages, assuming a standard is available for the observational setup.
 
+<!-- MARK: Wav Cal -->
 ## Wavelength Calibration
 
 Wavelength calibrations are ideally intended for [<span style="font-variant:small-caps;">iraf</span>].
@@ -87,6 +91,7 @@ e.g.
 '...'
 ```
 
+<!-- MARK: CLI Usage -->
 ## CLI Usage
 
 The [<span style="font-variant:small-caps;">stops</span>] pipeline is most generally controlled via a CLI.
@@ -105,6 +110,7 @@ where:
 
 Below are the details of the [<span style="font-variant:small-caps;">stops</span>] options, the available Modes, and their respective sub-options.
 
+<!-- MARK: STOPS Opts. -->
 ### [<span style="font-variant:small-caps;">stops</span>] Options
 
 **Optional:**
@@ -137,6 +143,7 @@ where `MODE` may be replaced with [`split`](#split), [`join`](#join), [`skylines
 
 ---
 
+<!-- MARK: STOPS Split -->
 #### <ins>s</ins>plit
 
 ```console
@@ -157,6 +164,7 @@ python STOPS . split (Options) [mxgbp*.fits]
 
 ---
 
+<!-- MARK: STOPS Join -->
 #### <ins>j</ins>oin
 
 ```console
@@ -178,6 +186,7 @@ python STOPS . join (Options) []
 
 ---
 
+<!-- MARK: STOPS Sky. -->
 #### <ins>sky</ins>lines
 
 ```console
@@ -203,6 +212,7 @@ python STOPS . skylines (Options) [Filenames]
 
 ---
 
+<!-- MARK: STOPS Corr. -->
 #### <ins>correlate</ins>
 
 ```console
@@ -226,6 +236,7 @@ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 
 <br>
 
+<!-- MARK: Contribute -->
 ## Contributing
 
 Contributions are welcome! Please fork the repository and create a pull request with your changes.
@@ -270,6 +281,7 @@ The following styles are broadly implemented, and serve as a collection of refer
     pip install -e ../STOPS
     ```
 
+<!-- MARK: See Also -->
 ## See Also
 
 * Package creation:
@@ -282,12 +294,13 @@ The following styles are broadly implemented, and serve as a collection of refer
   * <https://importlib-resources.readthedocs.io/en/latest/using.html>
   * <https://setuptools.pypa.io/en/latest/userguide/datafiles.html>
 
+<!-- MARK: Liscensing -->
 ## License
 
 This project is licensed under the BSD 3-Clause License.
 See the [LICENSE](/LICENSE "STOPS License") for further details.
 
-<!-- Links & References -->
+<!-- MARK: Links/Refs -->
 [writeup]: <https://github.com/JustinotherGitter/Masters-Thesis/Thesis.pdf> (Justin Cooper - Master Thesis)
 
 [<span style="font-variant:small-caps;">iraf</span>]: <https://iraf-community.github.io/> (IRAF GitHub Repository)
