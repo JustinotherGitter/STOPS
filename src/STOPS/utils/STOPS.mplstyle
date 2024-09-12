@@ -1,8 +1,7 @@
 # DO NOT EDIT - STOPS base inheritance class
 # https://matplotlib.org/stable/users/explain/customizing.html
 
-figure.figsize:         6.28, 3.48 # Set figsize to Latex `\the\textwidth`
-
+# MARK: Savefig parameters
 # savefig.directory:      ./      # default directory in which to save figures
 savefig.dpi:            900     # resolution of the output in dpi
 # savefig.edgecolor:      auto    # figure edge color when saving
@@ -10,9 +9,12 @@ savefig.dpi:            900     # resolution of the output in dpi
 savefig.format:         pdf     # default file format of save window
 savefig.transparent:    True    # save figures with a transparent background
 
+# MARK: Color cycle
 # https://loading.io/asset/736323
 axes.prop_cycle:        cycler('color', ['313e80', '5ce7a8', '0f4636', '00c3ff', '006bd3', '179b7d'])
 
+# MARK: Figure parameters
+figure.figsize:         6.28, 3.48 # Set figsize to Latex `\the\textwidth`
 # figure.dpi:             900     # figure dots per inch ## Breaks mpl pop up window
 figure.subplot.left:    0.11    # the left side of the subplots of the figure
 figure.subplot.bottom:  0.11    # the bottom of the subplots of the figure
@@ -25,6 +27,7 @@ figure.subplot.hspace:  0.02    # the height between subplots of the figure,
 # figure.raise_window :   True    # Open GUI window in front when calling show().
 # figure.constrained_layout.use: True # No overlaps between subplots
 
+# MARK: Text parameters
 # https://matplotlib.org/stable/users/explain/text/usetex.html
 text.usetex:            True    # use LaTeX to render all text
 font.family:            serif
@@ -35,6 +38,7 @@ axes.ymargin:           0.05    # y margin See `axes.Axes.margins`
 lines.markersize:       3       # markersize, in points
 lines.linewidth:        0.6     # line width, in points
 
+# MARK: Font size parameters
 # https://www.sascha-frank.com/latex-font-size.html
 font.size:              12      # controls default text sizes
 axes.titlesize:         medium  # fontsize of the axes title
@@ -45,9 +49,11 @@ xtick.labelsize:        xx-small # fontsize of the x-tick labels
 ytick.labelsize:        xx-small # fontsize of the y-tick labels
 legend.markerscale:     1       # the relative size of legend markers
 
+# MARK: Image parameters
 image.origin:           lower   # origin of the image, default is upper
 image.cmap:             gray    # A colormap name (plasma, magma, etc.)
 
+# MARK: Axes parameters
 axes.labelweight:       bold
 axes.labelpad:          2
 axes.grid:              False
@@ -55,6 +61,7 @@ axes.grid.which:        major
 axes.grid.axis:         x
 grid.linestyle:         --
 
+# MARK: Tick parameters
 xtick.bottom:           True
 xtick.top:              True
 ytick.left:             True

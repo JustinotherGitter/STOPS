@@ -294,6 +294,9 @@ The following styles are broadly implemented, and serve as a collection of refer
   * <https://importlib-resources.readthedocs.io/en/latest/using.html>
   * <https://setuptools.pypa.io/en/latest/userguide/datafiles.html>
 
+* [SALT] Line Atlases
+  * <http://pysalt.salt.ac.za/lineatlas/>
+
 <!-- MARK: Liscensing -->
 ## License
 
@@ -307,6 +310,7 @@ See the [LICENSE](/LICENSE "STOPS License") for further details.
 [<span style="font-variant:small-caps;">polsalt</span>]: <https://github.com/saltastro/polsalt> (POLSALT GitHub Repository)
 [<span style="font-variant:small-caps;">stops</span>]: <https://github.com/JustinotherGitter/STOPS> (STOPS GitHub Repository)
 
+[SALT]: <https://astronomers.salt.ac.za/> (SALT for astronomers Homepage)
 [FITS]: <https://fits.gsfc.nasa.gov/standard40/fits_standard40aa-le.pdf> (FITS file standard)
 [RegEx]: <https://regexr.com/> (Basic RegEx test environment)
 [Python]: <https://www.python.org/> (The Python website)
