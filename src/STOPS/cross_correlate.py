@@ -20,7 +20,6 @@ from scipy import signal
 
 from STOPS.utils.SharedUtils import find_files, continuum
 from STOPS.utils.Constants import SAVE_CORR, OFFSET
-from STOPS.utils.specpolpy3 import ccdcenter
 import STOPS.utils
 
 mpl_logger = logging.getLogger('matplotlib')
@@ -243,7 +242,7 @@ class CrossCorrelate:
         return spec, wav, bpm
 
     # MARK: Get bounds
-    def get_bounds(self, bpm: np.ndarray) -> np.ndarray:
+    def get_bounds(self, bpm: np.ndarray, gap_length: int = 30) -> np.ndarray:
         """
         Find the bounds for a file based on the CCD count.
         
@@ -258,27 +257,94 @@ class CrossCorrelate:
             The bounds for the CCD regions.
         
         """
-        # bounds.shape -> (O|E, CCD's, low.|up. bound)
+        if not 0 <= gap_length <= 60:
+            msg = f"An invalid gap length of {gap_length} was encountered."
+            logging.error(msg)
+            raise ValueError(msg)
+
+        # Check if get_bounds is needed
         if self.ccds == 1:
             return np.array(
                 [[(0, bpm[0].shape[-1])], [(0, bpm[1].shape[-1])]]
             ).astype(int)
 
+        # bounds.shape -> (O|E, CCD's, low.|up. bound)
         bounds = np.zeros((2, self.ccds, 2))
 
-        # Get lower and upper bound for each ccd, save to bounds
-        # Lower -> min is zero, Upper -> max is bpm length
-        # for ext, ccd in iters.product(range(2), range(self.ccds)):
-        #     mid = np.where(bpm[ext] == 2)[0][ccd]
-        #     ccds = self.ccds * 2
-        #     bounds[ext, ccd] = (
-        #         max(mid - bpm.shape[-1] // ccds, 0),
-        #         min(mid + bpm.shape[-1] // ccds, bpm.shape[-1])
-        #     )
+        # Check if `BPM` contains any `2`'s
+        if np.any(bpm == 2):
+            for ext, ccd in iters.product(range(2), range(self.ccds)):
+                mid = np.where(bpm[ext] == 2)[0][ccd]
+                ccds = self.ccds * 2
+                bounds[ext, ccd] = (
+                    max(mid - bpm.shape[-1] // ccds, 0),
+                    min(mid + bpm.shape[-1] // ccds, bpm.shape[-1])
+                )
 
-        for ext in range(2):
-            cedge = ccdcenter(bpm[ext])
-            bounds[ext] = np.array(cedge)
+            return bounds.astype(int)
+
+        for ext in range(len(self.beams)):
+
+            # Find min and max vals
+            min_val, max_val = 0, bpm[ext].shape[-1]
+            
+            while True:
+                if bpm[ext][min_val] == 0:
+                    break
+                min_val += 1
+
+            while True:
+                if bpm[ext][max_val - 1] == 0:
+                    break
+                max_val -= 1
+
+            # Find ranges of non zero values
+            regions: list[np.ndarray] = np.split(
+                np.where(bpm[ext, min_val: max_val] == 1)[0],
+                np.where(np.diff(np.where(bpm[ext, min_val: max_val] == 1)[0]) != 1)[0] + 1
+            )
+
+            # If less than 2 regions, raise error
+            if len(regions) < 2:
+                msg = "Less than 2 regions found in BPM. Returning bounds."
+                logging.error(msg)
+                raise ValueError(msg)
+
+            # Find `regions` longer than `gap_length`
+            regions = [region for region in regions if len(region) >= gap_length]
+
+            # Ensure 2 regions are found
+            if len(regions) < 2:
+                logging.debug(
+                    "get_bounds - Less than 2 regions found in BPM." + \
+                    f"Calling get_bounds with gap_length = {gap_length - 10}"
+                )
+                return self.get_bounds(bpm, gap_length - 10)
+            
+            elif len(regions) > 2:
+                logging.debug(
+                    "get_bounds - More than 2 regions found in BPM. " + \
+                    f"Calling get_bounds with gap_length = {gap_length + 5}"
+                )
+                return self.get_bounds(bpm, gap_length - 10)
+
+            # Ensure region order correct
+            if regions[0][0] > regions[1][0]:
+                regions = regions[::-1]
+
+            # Assign bounds from regions
+            bounds[ext] = np.array([
+                (min_val, regions[0][0]),
+                (regions[0][-1], regions[1][0]),
+                (regions[1][-1], max_val),
+            ])
+
+            # Get lower and upper bound for each ccd, save to bounds
+            # Lower -> min is zero, Upper -> max is bpm length
+
+            # for ext in range(2):
+            #     cedge = ccdcenter(bpm[ext])
+            #     bounds[ext] = np.array(cedge)
 
         logging.debug(f"get_bounds - found bounds at \n{bounds}")
 
