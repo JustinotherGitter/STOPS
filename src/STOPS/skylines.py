@@ -23,6 +23,7 @@ import STOPS.data
 import STOPS.utils
 import STOPS.data.RSS_arc
 
+
 # print(
 #  [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 # )
@@ -81,6 +82,19 @@ class Skylines:
         Removes the continuum from the spectrum.
     process(self) -> None:
         Placeholder method for processing the data.
+
+    See Also
+    --------
+    matplotlib custom style:
+        https://matplotlib.org/stable/users/explain/customizing.html
+
+    Notes
+    -----
+    Constants imported (see utils.Constants):
+        SAVE_SKY:
+            The default save name for the skylines plot.
+        FIND_PEAK_PARAMS:
+            The default parameters for finding peaks in the spectrum.
     """
 
     #----------sky1----------
@@ -133,9 +147,26 @@ class Skylines:
 
         self.wav_unit = "$\\AA$"
 
-        logging.debug("__init__ - \n", self.__dict__)
+        logging.debug(f"__init__\n{repr(self)}")
 
         return
+
+    # MARK: Skylines repr
+    def __repr__(self) -> str:
+        template = (
+            "Skylines(\n"
+            f"\tdata_dir={self.data_dir},\n"
+            f"\tfits_list=[\n\t\t{"\n\t\t".join(
+                map(str, self.fits_list)
+            )}\n\t],\n"
+            f"\tbeams={self.beams},\n"
+            f"\tplot={self.can_plot},\n"
+            f"\tsave_prefix={self.save_prefix},\n"
+            f"\twav_unit={self.wav_unit}\n"
+            ")\n"
+        )
+
+        return template
 
     # MARK: Beams property
     @property
@@ -177,14 +208,15 @@ class Skylines:
         -------
         peaks, properties : tuple[list[np.ndarray], list[dict]]
             The peaks and their properties.
-
         """
         peaks = []
         props = []
         row_means = []
 
         for ext in range(len(self.beams)):
-            row_mean = spec[ext] if axis is None else np.mean(spec[ext], axis=axis)
+            row_mean = spec[ext] if axis is None else np.mean(
+                spec[ext], axis=axis
+            )
 
             peak, prop = signal.find_peaks(
                 row_mean,
@@ -213,7 +245,9 @@ class Skylines:
             plt.show()
 
         logging.debug(f"find_peaks - peaks: {[len(i) for i in peaks]}")
-        logging.debug(f"find_peaks - props: {[key for key in props[0].keys()]}")
+        # logging.debug(
+        #     f"find_peaks - props: {[key for key in props[0].keys()]}"
+        # )
 
         return peaks, props
 
@@ -235,7 +269,7 @@ class Skylines:
             The second 1d array.
         max_diff : int, optional
             The maximum difference allowed, by default 100.
-        
+
         Returns
         -------
         a : np.ndarray (len(a))
@@ -245,20 +279,21 @@ class Skylines:
         min_idxs : np.ndarray (len(a))
             The indices of the minimum difference between
             the elements of the two arrays.
-        
         """
         # Compute the difference matrix using transpose
         diff = a - b[:, np.newaxis]
 
         # Find the minimum value in each row (A) of `diff`
         min_idxs = np.abs(diff).argmin(axis=0)
-        print(min_idxs.shape, diff.shape)
+
         min_vals = np.array([diff[j, i] for i, j in enumerate(min_idxs)])
         # TODO: Recalculate min_val after selecting best min_val and
         # TODO: removing the corresponding row/column
 
-        logging.debug(f"min_diff_matrix - min_vals: {np.round(min_vals, 2)}")
-        logging.debug(f"min_diff_matrix - min_idxs: {min_idxs}")
+        logging.debug(
+            f"min_diff_matrix - min_vals=\n{np.round(min_vals, 2).astype(int)}"
+        )
+        logging.debug(f"min_diff_matrix - min_idxs=\n{min_idxs}")
 
         max_mask = (min_vals <= max_diff) & (min_vals >= -1 * max_diff)
 
@@ -281,11 +316,13 @@ class Skylines:
         -------
         spec, wav, bpm : tuple[np.ndarray, np.ndarray, np.ndarray]
             The wavelength, spectral, and bad pixel mask data.
-
         """
         # Load data from self.beams extension
         with pyfits.open(filename) as hdul:
-            exts = [0, 1] if len(self.beams) == 2 else 0 + int(self.beams == 'E')
+            exts = [0, 1]
+            if len(self.beams) != 2:
+                exts = 0 + int(self.beams == 'E')
+
             spec2d = np.atleast_3d(hdul["SCI"].data[exts])
             wav2d = np.atleast_3d(hdul["WAV"].data[exts])
             bpm2d = np.atleast_3d(hdul["BPM"].data[exts].astype(bool))
@@ -326,10 +363,9 @@ class Skylines:
         -------
         sky_lines : np.ndarray['wav', 'flux']
             The sky lines from the file.
-        
         """
         lines: np.ndarray = None
-        
+
         usecols = None
         if filename:
             filename = files(STOPS.data.RSS_arc).joinpath(filename)
@@ -395,7 +431,6 @@ class Skylines:
         -------
         bpm : np.ndarray
             The updated bad pixel mask.
-
         """
         # Base mask
         bpm[:, :bg_margin] = True
@@ -425,7 +460,10 @@ class Skylines:
                 bpm[ext, lb: ub] = True
                 # TODO: Relocate targets after initial masking
 
-        logging.info(f"mask_traces - {min(max_traces, len(traces))} of {len(traces)} traces masked.")
+        logging.info(
+            f"mask_traces - {min(max_traces, len(traces))} " +
+            f"of {len(traces)} traces masked."
+        )
 
         return bpm
 
@@ -500,7 +538,10 @@ class Skylines:
                     vmin=cs[ext].mean() - 2 * cs[ext].std()
                 )
 
-                logging.debug(f"{'E' if ext else 'O'} Average continuum = {np.median(np.median(cs[ext], axis=0)):4.3f}")
+                logging.debug(
+                    f"{'E' if ext else 'O'} Average continuum = " +
+                    f"{np.median(np.median(cs[ext], axis=0)):4.3f}"
+                )
 
                 axx = axs[ext].twinx()
                 axx.hlines(
@@ -562,12 +603,17 @@ class Skylines:
         # Convert axs to a 2D array if ccd count is 1
         if self.ccds == 1:
             # noinspection PyTypeChecker
-            axs: np.ndarray[matplotlib.axes.Axes] = np.swapaxes(np.atleast_2d(axs), 0, 1)
+            axs: np.ndarray[matplotlib.axes.Axes] = np.swapaxes(
+                np.atleast_2d(axs),
+                0,
+                1
+            )
 
         for fl in range(len(self.arc_list if arc else self.fits_list)):
 
             # set color cycle
-            # color = next(axs[0, 0]._get_lines.prop_cycler)['color'] # private deprecated
+            # private deprecated
+            # color = next(axs[0, 0]._get_lines.prop_cycler)['color']
             color = axs[0, 0]._get_lines.get_next_color()
 
             for ext in range(len(self.beams)):
@@ -622,8 +668,12 @@ class Skylines:
                     # ] = self.max_difference // 2
 
                     ok = np.where(
-                        (sky_wavs >= wavelengths[1][fl][ext].data[ccdrange * ccd]) &
-                        (sky_wavs <= wavelengths[1][fl][ext].data[ccdrange * (ccd + 1)])
+                        (sky_wavs >= wavelengths[1][fl][ext].data[
+                            ccdrange * ccd
+                        ]) &
+                        (sky_wavs <= wavelengths[1][fl][ext].data[
+                            ccdrange * (ccd + 1)
+                        ])
                     )
                     axs[1, ccd].plot(
                         sky_wavs[ok],
@@ -639,7 +689,9 @@ class Skylines:
                         # label=f"${self.beams[ext]}_{{{fl + 1}}}$",
                     )
 
-                    logging.debug(f"plot - RMS: {np.sqrt(np.mean(dev[ok] ** 2)):2.3f}")
+                    logging.debug(
+                        f"plot - RMS: {np.sqrt(np.mean(dev[ok] ** 2)):2.3f}"
+                    )
 
         for ccd in range(self.ccds):
             ccdrange = spectra[1][0][0].shape[-1] // self.ccds
@@ -648,7 +700,7 @@ class Skylines:
             # noinspection PyTypeChecker
             ok = np.where(
                 (lines['wav'] >= wavelengths[1][0][0].data[ccdrange * ccd]) &
-                (lines['wav'] <= wavelengths[1][0][0].data[ccdrange * (ccd + 1)])
+                (lines['wav'] <= wavelengths[1][0][0].data[ccdrange * (ccd+1)])
             )
             # noinspection PyTypeChecker
             axs[0, ccd].plot(
@@ -687,16 +739,6 @@ class Skylines:
         for ax in axs[1, :]:
             ax.grid(axis='y')
 
-        # fig.add_subplot(111, frameon=False)
-        # # hide tick and tick label of the big axis
-        # plt.tick_params(
-        # labelcolor='none',
-        #   which='both',
-        #   top=False,
-        #   bottom=False,
-        #   left=False,
-        #   right=False
-        # )
         axs[-1, 0 if self.ccds == 1 else 1].set_xlabel(
             f"Wavelength ({self.wav_unit})"
         )
@@ -787,6 +829,8 @@ class Skylines:
 
 # MARK: Main function
 def main(argv) -> None:
+    """main function."""
+
     return
 
 

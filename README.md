@@ -116,12 +116,14 @@ Below are the details of the [<span style="font-variant:small-caps;">stops</span
 **Optional:**
 
 * `-V`, `--version`: Show the version of [<span style="font-variant:small-caps;">stops</span>].
-* `-v`, `--verbose`: Enable and increase verbosity. Use `-v` or `-vv` for greater verbosity levels.
+* `-v`, `--verbose`: Enable and increase verbosity.
+  Use `-v` or `-vv` for greater verbosity levels.
 * `-l`, `--log`: Specify the filename of the logging file, which is created if it does not exist.
 
 **Compulsory:**
 
-* `data_dir` : The Path (absolute or relative) to the directory containing the Working data. `.` may be used to indicate the current directory that the CLI is running in.
+* `data_dir` : The Path (absolute or relative) to the directory containing the Working data.
+  `.` may be used to indicate the current directory that the CLI is running in.
 
 ### Help Commands
 
@@ -155,12 +157,15 @@ python STOPS . split (Options) [mxgbp*.fits]
 **Optional:**
 
 * `-n`, `--no_arc`: Exclude arc files from processing.
-* `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split. Defaults to the [<span style="font-variant:small-caps;">polsalt</span>]'s default.
-* `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams. Defaults to the [<span style="font-variant:small-caps;">polsalt</span>]'s default.
+* `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split.
+  Defaults to the [<span style="font-variant:small-caps;">polsalt</span>]'s default.
+* `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams.
+  Defaults to the [<span style="font-variant:small-caps;">polsalt</span>]'s default.
 
 **Compulsory:**
 
-* Filenames to be split. May be excluded if the [RegEx] pattern in the example matches the desired files.
+* Filenames to be split.
+  May be excluded if the [RegEx] pattern in the example matches the desired files.
 
 ---
 
@@ -176,9 +181,12 @@ python STOPS . join (Options) []
 **Optional:**
 
 * `-n`, `--no_arc`: Exclude arc files from processing.
-* `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split. Defaults to the pipeline's default.
-* `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams. Defaults to the pipeline's default.
-* `-c`, `--coefficients`: Custom coefficients to use instead of the `IRAF` fitcoords database. Use as `-c <o_solution> <e_solution>` or a [RegEx] descriptor `-c <*solution*extension>`.
+* `-s`, `--split_row`: Row along which the $O$- & $E$-beams are split.
+  Defaults to the pipeline's default.
+* `-p`, `--save_prefix`: Prefix appended to the filenames for saving the $O$- & $E$-beams.
+  Defaults to the pipeline's default.
+* `-c`, `--coefficients`: Custom coefficients to use instead of the `IRAF` fitcoords database.
+  Use as `-c <o_solution> <e_solution>` or a [RegEx] descriptor `-c <*solution*extension>`.
 
 **Compulsory:**
 
@@ -197,7 +205,8 @@ python STOPS . skylines (Options) [Filenames]
 
 **Optional:**
 
-* `-b`, `--beams`: Beams to process. Defaults to `OE`, but may be given `O`, `E`, or `OE`.
+* `-b`, `--beams`: Beams to process.
+  Defaults to `OE`, but may be given `O`, `E`, or `OE`.
 * `-ccd`, `--split_ccd`: Flag to NOT split CCD's.
 * `-c`, `--continuum_order`: Order of continuum to remove from spectra.
 * `-p`, `--plot`: Flag for additional debug plot outputs.
@@ -206,7 +215,8 @@ python STOPS . skylines (Options) [Filenames]
 
 **Compulsory:**
 
-* Filenames to be considered for `skyline` comparisons. May either be:
+* Filenames to be considered for `skyline` comparisons.
+  May either be:
   * the `wmxgbp*.fits` [RegEx] pattern for [<span style="font-variant:small-caps;">polsalt</span>] formatted, wavelength calibrated, [FITS] files, or
   * the `tbeam*.fits` [RegEx] pattern for [<span style="font-variant:small-caps;">iraf</span>] formatted, `transform` output, [FITS] files.
 
@@ -223,16 +233,19 @@ python STOPS . correlate (Options) [ecwmxgbp*.fits]
 
 **Optional:**
 
-* `-b`, `--beams`: Beams to process. Defaults to `OE`, but may be given `O`, `E`, or `OE`.
+* `-b`, `--beams`: Beams to process.
+  Defaults to `OE`, but may be given `O`, `E`, or `OE`.
 * `-ccd`, `--split_ccd`: Flag to NOT split CCD's.
-* `-c`, `--continuum_order`: Order of continuum to remove from spectra. Deprecated keyword
+* `-c`, `--continuum_order`: Order of continuum to remove from spectra.
 * `-p`, `--plot`: Flag for additional debug plot outputs.
 * `-s`, `--save_prefix`: Prefix used when saving plot.
 * `-o`, `--offset`: Introduce an offset when correcting for known offset in spectra or for testing purposes.
+  Deprecated keyword.
 
 **Compulsory:**
 
-* Filenames to be considered for `correlate` cross-correlation. May be excluded if the [RegEx] pattern in the example matches the desired files.
+* Filenames to be considered for `correlate` cross-correlation.
+  May be excluded if the [RegEx] pattern in the example matches the desired files.
 
 <br>
 

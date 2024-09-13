@@ -109,7 +109,8 @@ def find_files(
     -------
     list[Path] | tuple[list[Path], list[Path]]
         List of Path objects representing the valid or found files, or a
-        tuple of lists representing the valid files and arc files, respectively.
+        tuple of lists representing the valid files and arc files,
+        respectively.
 
     Raises
     ------
@@ -157,8 +158,14 @@ def find_files(
     # Return valid files, with the arc files
     if sep_arc:
         logging.debug(f"find_files - {valid} and {valid_arcs}")
-        return [Path(data_dir) / fl for fl in valid], [Path(data_dir) / fl for fl in valid_arcs]
-    
+        return [
+            Path(data_dir) / fl
+            for fl in valid
+        ], [
+            Path(data_dir) / fl
+            for fl in valid_arcs
+        ]
+
     logging.debug(f"find_files will parse and return: {valid}")
 
     return [Path(data_dir) / fl for fl in valid]
@@ -202,14 +209,14 @@ def find_arc(filenames: list[Path]) -> Path:
 
 # MARK: Continuum
 def continuum(
-        wav: np.ndarray,
-        spec: np.ndarray,
-        deg: int = 11,
-        std: float = 1.6,
-        steps: int = 5,
-        pos: bool = False,
-        plot: bool = False
-    ) -> np.array:
+    wav: np.ndarray,
+    spec: np.ndarray,
+    deg: int = 11,
+    std: float = 1.6,
+    steps: int = 5,
+    pos: bool = False,
+    plot: bool = False
+) -> np.array:
     """
     Define the continuum using a Chebyshev polynomial fit.
 
@@ -229,10 +236,12 @@ def continuum(
         The amount of iterations to perform for sigma clipping,
         by default 5.
     pos : bool, optional
-        The boolean deciding whether the absolute difference should be considered or not,
+        The boolean deciding whether the absolute difference should
+        be considered or not,
         by default False.
     plot : bool, optional
-        The boolean deciding whether to display additional information as plots,
+        The boolean deciding whether to display additional information
+        as plots,
         by default False.
 
     Returns
@@ -243,10 +252,12 @@ def continuum(
     References
     ----------
     Continuum fitting:
-        van Soelen, B., 2019, "PHYS6854 - Computational Physics", University of the Free State.
+        van Soelen, B., 2019,
+        "PHYS6854 - Computational Physics",
+        University of the Free State.
     """
     # Ignore RankWarning, obvious to the user when Rank is poorly conditioned
-    warnings.simplefilter('ignore', np.RankWarning)
+    warnings.simplefilter('ignore', np.exceptions.RankWarning)
 
     if plot:
         fig, axs = plt.subplots(2, 1, sharex=True)
@@ -278,7 +289,11 @@ def continuum(
             axs[0].plot(wav, chebyshev.chebval(wav, p), label=f"fit {i}")
 
     if plot:
-        axs[1].plot(wav, spec / chebyshev.chebval(wav, p), label="normalised data")
+        axs[1].plot(
+            wav,
+            spec / chebyshev.chebval(wav, p),
+            label="normalised data"
+        )
         for ax in axs:
             ax.legend()
         plt.show()
@@ -311,7 +326,8 @@ def filtered_continuum(
         The amount of iterations for lowpass filtering,
         by default 5.
     plot : bool, optional
-        The boolean deciding whether to display additional information as plots,
+        The boolean deciding whether to display additional information
+        as plots,
         by default False.
 
     Returns
@@ -339,7 +355,7 @@ def filtered_continuum(
         if plot:
             axs[0].plot(filt_cont, label=f"{i}")
 
-        # Mask the data where the difference is greater than a desired standard deviation
+        # Mask the data where the difference is greater than a desired std.
         diff = data - filt_cont
         data = np.ma.masked_where(np.abs(diff) > std * data.std(), data)
 
@@ -380,7 +396,7 @@ def grow(
         if not val:
             continue
 
-        mArr.mask[max(0, i - growth) : i] = True
-        mArr.mask[i : min(i + growth + 1, len(mArr.mask))] = True
+        mArr.mask[max(0, i - growth): i] = True
+        mArr.mask[i: min(i + growth + 1, len(mArr.mask))] = True
 
     return mArr

@@ -67,6 +67,13 @@ tests = [
 #     "flake8",
 #     etc.
 # ]
+dev = [
+    # "sphinx",
+    "black",
+    "flake8",
+    "mypy",
+    "isort",
+]
 
 # [tool]
 # [tool.setuptools]

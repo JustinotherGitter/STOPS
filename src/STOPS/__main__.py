@@ -1,7 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Argument parser for STOPS."""
+"""
+The Command Line Interface (CLI) for STOPS, handling argument parsing,
+class instantiation, processing, and logging.
+
+Usage
+-----
+`python -m STOPS`
+
+Suffix the above command with `-h` for help on usage.
+
+Description
+-----------
+This module is the entry point for the STOPS package. It provides
+the CLI argument parser for the supplementary tools provided by STOPS.
+The parser is built using the `argparse` module and is designed to be
+user-friendly.
+
+See Also
+--------
+IRAF:
+    For more information on the IRAF package, see the IRAF website:
+    https://iraf-community.github.io/
+
+POLSALT:
+    For more information on the POLSALT pipeline, see the POLSALT website:
+    https://github.com/saltastro/polsalt
+
+PYSALT:
+    For more information on the PYSALT package, see the PYSALT website:
+    https://astronomers.salt.ac.za/software/pysalt-documentation/
+
+PYRAF:
+    For more information on the PYRAF package, see the PYRAF website:
+    https://pyraf.readthedocs.io/en/latest/
+
+"""
 
 # MARK: Imports
 import sys
@@ -14,6 +49,7 @@ from STOPS import Split, Join, CrossCorrelate, Skylines
 from STOPS.utils import ParserUtils as Parser
 from STOPS.utils.Constants import SPLIT_ROW, PREFIX, PARSE, SAVE_CORR, SAVE_SKY
 
+
 # MARK: Constants
 PROG = "STOPS"
 DESCRIPTION = """
@@ -23,7 +59,8 @@ allowing for wavelength calibrations with IRAF. The tools provide
 support for splitting and joining polsalt formatted data as well as
 cross correlating complementary polarimetric beams.
 
-DOI: 10.22323/1.401.0056
+Pre-release Reference:
+    DOI: 10.22323/1.401.0056
 """
 
 
@@ -103,7 +140,7 @@ split_join_args.add_argument(
 )
 
 
-# MARK: Correlate\Skylines Parent
+# MARK: Corr.\Sky. Parent
 corr_sky_args = argparse.ArgumentParser(add_help=False)
 corr_sky_args.add_argument(
     "filenames",
@@ -173,7 +210,7 @@ split_parser = subparsers.add_parser(
     parents=[split_join_args],
 )
 # 'children' split args here
-# Change defaults here
+# Change `split` defaults here
 split_parser.set_defaults(
     mode="split",
     func=Split,
@@ -200,7 +237,7 @@ join_parser.add_argument(
         "a regex descriptor '-c <*solution*extention>'."
     ),
 )
-# Change defaults here
+# Change `join` defaults here
 join_parser.set_defaults(
     mode="join",
     func=Join,
@@ -237,11 +274,11 @@ corr_parser.add_argument(
     help=(
         "Prefix used when saving plot. "
         "Excluding flag does not save output plot, "
-        f"flag usage of option uses default prefix, "
+        f"flag usage of option uses default prefix {SAVE_CORR}, "
         "and a provided prefix overwrites default prefix."
     ),
 )
-# Change defaults here
+# Change `correlate` defaults here
 corr_parser.set_defaults(
     mode="correlate",
     func=CrossCorrelate,
@@ -276,11 +313,11 @@ sky_parser.add_argument(
     help=(
         "Prefix used when saving plot. "
         "Excluding flag does not save output plot, "
-        f"flag usage of option uses default prefix, "
+        f"flag usage of option uses default prefix {SAVE_SKY}, "
         "and a provided prefix overwrites default prefix."
     ),
 )
-# Change defaults here
+# Change `skylines` defaults here
 sky_parser.set_defaults(
     mode="skyline",
     func=Skylines,
