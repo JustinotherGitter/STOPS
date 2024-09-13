@@ -7,7 +7,7 @@ from .join import Join
 from .cross_correlate import CrossCorrelate
 from .skylines import Skylines
 
-__version__ = "2024.09.12"
+__version__ = "2024.09.13"
 # "Production", "Prototype", "Deprecated"
 __status__ = "Development"
 
