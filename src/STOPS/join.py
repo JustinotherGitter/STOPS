@@ -495,8 +495,10 @@ class Join:
                 # neighbor_threshold=CR_PARAMS['CR_NEIGH_THRESH'],
                 # effective_gain=CR_PARAMS['GAIN'],
                 # background=CR_PARAMS['BACKGROUND'],
-                readnoise=CR_PARAMS['READNOISE'],
+                readnoise=CR_PARAMS['READ_NOISE'],
                 gain=CR_PARAMS['GAIN'],
+                gain_apply=CR_PARAMS['GAIN_APPLY'],
+                objlim=CR_PARAMS['OBJ_LIM'],
                 verbose=self.verbose,
             )[0]
 

@@ -7,7 +7,9 @@ import os
 SPLIT_ROW = 517
 
 # Note order of save prefixes: O first, E second. Always.
-"""The prefix with which the split $O$- and $E$-beam science files are saved."""
+"""
+The prefix with which the split $O$- and $E$-beam science files are saved.
+"""
 PREFIX = ["beamo", "beame"]
 
 """The prefix with which the split $O$- and $E$-beam FITS files are saved."""
@@ -20,14 +22,17 @@ SAVE_CORR = "corr"
 SAVE_SKY = "sky"
 
 
-"""The `polsalt` directory containing the calibration data for the Wollaston prism."""
+"""The `polsalt` calibration data directory for the Wollaston prism, etc."""
 DATADIR = os.path.expanduser("~/polsalt-beta/polsalt/data/")
 
 """The default directory to search for data files. DEPRECATED."""
 DEFAULT_DIR = os.getcwd()
 
 
-"""The cropping applied during `split`, based on best cropping of `PG0300` with `Ar` arc lamp."""
+"""
+The cropping applied during `split`,
+based on best cropping of `PG0300` with `Ar` arc lamp.
+"""
 CROP_DEFAULT = 40
 
 
@@ -44,17 +49,23 @@ PARSE = {
 # https://www.astropy.org/ccd-reduction-and-photometry-guide/v/dev/notebooks/08-03-Cosmic-ray-removal.html
 """
 The default parameters for cosmic ray cleaning.
-Note deprecations arising from ccdproc implementation of the lacosmic algorithm.
-Gain and readnoise sourced from https://pysalt.salt.ac.za/proposal_calls/current/ProposalCall.html
+Note deprecations arising from ccdproc replacing the lacosmic algorithm.
+Gain and readnoise sourced from
+https://pysalt.salt.ac.za/proposal_calls/current/ProposalCall.html
+
+See function args at
+https://ccdproc.readthedocs.io/en/latest/api/ccdproc.cosmicray_lacosmic.html
 """
 CR_PARAMS = {
-    "READNOISE": 3.3,
+    "READ_NOISE": 3.3,
     "GAIN": 1,
-    "CR_CONTRAST": 2,  # Deprecated
-    "CR_THRESHOLD": 4,  # Deprecated
-    "CR_NEIGHBOUR_THRESHOLD": 4,  # Deprecated
+    "GAIN_APPLY": False,  # ccdproc default overwrite
     "BACKGROUND": None,
+    "OBJ_LIM": 2,  # Overwrite to original lacosmic default
 }
+# "CR_CONTRAST": 2,  # Deprecated
+# "CR_THRESHOLD": 4,  # Deprecated
+# "CR_NEIGHBOUR_THRESHOLD": 4,  # Deprecated
 
 """The default parameters for the `skylines` `find_peaks` function."""
 FIND_PEAK_PARAMS = {
@@ -64,7 +75,7 @@ FIND_PEAK_PARAMS = {
 }
 
 """The default `skylines` Arc lamp."""
-ARC_FILE = 'Argon_lores.txt' # 'NeAr.txt' | 'ThAr.txt' | 'Xe.txt'
+ARC_FILE = 'Argon_lores.txt'  # 'NeAr.txt' | 'ThAr.txt' | 'Xe.txt'
 
 
 """The vertical offset of the spectra in the `correlate` plot."""
