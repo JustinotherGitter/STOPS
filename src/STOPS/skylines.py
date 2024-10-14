@@ -35,9 +35,6 @@ pil_logger.setLevel(logging.INFO)
 
 # MARK: Skylines Class
 class Skylines:
-
-    #----------sky0----------
-
     """
     Class representing the Skylines object.
 
@@ -97,8 +94,6 @@ class Skylines:
             The default parameters for finding peaks in the spectrum.
     """
 
-    #----------sky1----------
-
     # MARK: Skylines init
     def __init__(
             self,
@@ -145,7 +140,7 @@ class Skylines:
 
         self.max_difference = 5
 
-        self.wav_unit = "$\\AA$"
+        self.wav_unit = "\\AA"
 
         logging.debug(f"__init__\n{repr(self)}")
 

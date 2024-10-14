@@ -29,9 +29,6 @@ mpl_logger.setLevel(logging.INFO)
 
 # MARK: Correlate class
 class CrossCorrelate:
-
-    #----------corr0----------
-
     """
     Cross correlate allows for comparing the extensions of multiple
     FITS files, or comparing the $O$- and $E$-beams of a single FITS file.
@@ -138,8 +135,6 @@ class CrossCorrelate:
             The vertical offset of spectra in the output plot.
     """
 
-    #----------corr1----------
-
     # MARK: Correlate init
     def __init__(
             self,
@@ -194,7 +189,7 @@ class CrossCorrelate:
                 f"Saving under {self.save_prefix}"
             ))
 
-        self.wav_unit = "$\\AA$"
+        self.wav_unit = "\\AA"
         self.wav_cdelt = 1
 
         self.alt = self.ftcs if kwargs.get("ftcs") else None
